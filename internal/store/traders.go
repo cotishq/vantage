@@ -70,3 +70,30 @@ func MarkPolled(ctx context.Context, db *pgxpool.Pool, wallet string) error {
 	}
 	return nil
 }
+
+func ListTrackedWallets(ctx context.Context, db *pgxpool.Pool) ([]string, error) {
+	const query = `
+		SELECT proxy_wallet
+		FROM traders
+		ORDER BY proxy_wallet
+	`
+
+	rows, err := db.Query(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("list tracked wallets: %w", err)
+	}
+	defer rows.Close()
+
+	var wallets []string
+	for rows.Next() {
+		var wallet string
+		if err := rows.Scan(&wallet); err != nil {
+			return nil, fmt.Errorf("scan tracked wallet: %w", err)
+		}
+		wallets = append(wallets, wallet)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate tracked wallets: %w", err)
+	}
+	return wallets, nil
+}
