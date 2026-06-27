@@ -20,6 +20,11 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 - Activity: GET /activity?user=<wallet>&type=TRADE,SPLIT,MERGE,REDEEM,REWARD,CONVERSION
   Response fields: proxyWallet, side, asset, conditionId, size, price, timestamp,
   title, slug, outcome, outcomeIndex, type
+- NOTE: rank/vol/pnl/size/price/etc. sometimes come back as JSON strings instead of
+  numbers. Already handled via parseJSONFloat/parseJSONInt helpers in
+  internal/polymarket/leaderboard.go — reuse these, do not redefine.
+- NOTE: Activity.Timestamp is Unix SECONDS (confirmed against real data on Jun 27).
+  Convert with time.Unix(ts, 0).UTC(), not UnixMilli.
 
 ## DB schema (already applied)
 - traders(proxy_wallet PK, user_name, x_username, verified_badge, profile_image, first_seen_at, last_polled_at)
@@ -42,8 +47,36 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 - API layer only ever reads from leaderboard_scores (precomputed) — never compute
   scores live on request.
 
-## Today's goal (Day 1)
-1. Polymarket client methods: GetLeaderboard, GetPositions, GetActivity
-2. Seed traders table from GetLeaderboard
-3. Pull positions + activity for one test wallet, insert into trader_positions / trader_activity
-4. chi server with /health and /debug/leaderboard
+## What's already built (Day 1 — done, Jun 25-26)
+- internal/polymarket/client.go — base Client struct, generic get() helper
+- internal/polymarket/leaderboard.go — LeaderboardEntry, GetLeaderboard,
+  parseJSONFloat/parseJSONInt (shared flexible-number decoders, reused everywhere)
+- internal/polymarket/activity.go — Position, Activity structs, GetPositions, GetActivity
+- internal/store/db.go — New(ctx, dsn) opens pgxpool.Pool
+- internal/store/traders.go — Trader struct, UpsertTrader, MarkPolled
+- internal/store/positions.go — UpsertPosition (ON CONFLICT DO UPDATE — live snapshot)
+- internal/store/activity.go — InsertActivity (ON CONFLICT DO NOTHING — immutable history)
+- cmd/server/main.go — connects DB, seeds traders from leaderboard, chi server with
+  /health and /debug/leaderboard. Currently has a temporary single-test-wallet block
+  pulling positions/activity for entries[0] — this needs to generalize to ALL tracked
+  wallets today (see Today's goal below).
+
+## Today's goal (Day 3 — Jun 27)
+1. Generalize ingestion: loop GetPositions/GetActivity over every wallet in `traders`
+   (not just one test wallet), with a small delay between calls to be polite to the API.
+   Call MarkPolled after each wallet succeeds.
+2. Build the Score computation engine — a function that reads a wallet's stored
+   trader_activity + trader_positions rows (NOT live API calls) for a given time_window,
+   and computes:
+   - win_rate: % of positions with cash_pnl > 0 among resolved/redeemed positions
+   - max_loss: largest single negative cash_pnl in the window
+   - profit_factor: sum(positive cash_pnl) / abs(sum(negative cash_pnl))
+   - consistency: % of active trading days in the window that were net-profitable
+   - sharpe: mean(daily PnL deltas) / stddev(daily PnL deltas)
+   - score: 0.25*consistency + 0.25*normalized_returns + 0.20*win_rate +
+     0.15*normalized_max_loss + 0.15*profit_factor
+     (normalize each sub-metric to a comparable 0-1ish scale before weighting —
+     do not just plug raw PnL into a weighted sum with a 0-1 win rate)
+3. Upsert results into leaderboard_scores per (proxy_wallet, time_window), starting
+   with windows '1D' and 'ALL' to prove correctness before expanding to all windows.
+4. Manually spot-check 2-3 wallets' computed scores against their raw activity by hand.

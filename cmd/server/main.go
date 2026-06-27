@@ -57,6 +57,34 @@ func main() {
 			seeded++
 		}
 		log.Printf("seeded %d traders", seeded)
+
+		if len(entries) > 0 {
+			testWallet := entries[0].ProxyWallet
+			positions, err := pm.GetPositions(testWallet, 50, 0)
+			if err != nil {
+				log.Printf("warning: get positions failed: %v", err)
+			} else {
+				for _, p := range positions {
+					if err := store.UpsertPosition(ctx, db, testWallet, p); err != nil {
+						log.Printf("warning: upsert position failed: %v", err)
+					}
+				}
+				log.Printf("inserted %d positions for %s", len(positions), testWallet)
+			}
+
+			activity, err := pm.GetActivity(testWallet, nil, 50, 0)
+			if err != nil {
+				log.Printf("warning: get activity failed: %v", err)
+			} else {
+				for _, a := range activity {
+					if err := store.InsertActivity(ctx, db, testWallet, a); err != nil {
+						log.Printf("warning: insert activity failed: %v", err)
+					}
+				}
+				log.Printf("inserted %d activity events for %s", len(activity), testWallet)
+				store.MarkPolled(ctx, db, testWallet)
+			}
+		}
 	}
 
 	r := chi.NewRouter()
