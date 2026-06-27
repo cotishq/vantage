@@ -1,0 +1,162 @@
+package api
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+type leaderboardEntry struct {
+	Rank          int     `json:"rank"`
+	ProxyWallet   string  `json:"proxy_wallet"`
+	UserName      string  `json:"user_name"`
+	XUsername     string  `json:"x_username"`
+	VerifiedBadge bool    `json:"verified_badge"`
+	ProfileImage  string  `json:"profile_image"`
+	PnL           float64 `json:"pnl"`
+	WinRate       float64 `json:"win_rate"`
+	MaxLoss       float64 `json:"max_loss"`
+	ProfitFactor  float64 `json:"profit_factor"`
+	Consistency   float64 `json:"consistency"`
+	Sharpe        float64 `json:"sharpe"`
+	Score         float64 `json:"score"`
+}
+
+func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		window := r.URL.Query().Get("window")
+		if window == "" {
+			window = "ALL"
+		}
+
+		sortColumn, ok := leaderboardSortColumn(r.URL.Query().Get("sort"))
+		if !ok {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "invalid sort"})
+			return
+		}
+
+		limit, err := parseIntQuery(r, "limit", 50)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if limit < 1 {
+			limit = 50
+		}
+		if limit > 100 {
+			limit = 100
+		}
+
+		offset, err := parseIntQuery(r, "offset", 0)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+		if offset < 0 {
+			offset = 0
+		}
+
+		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, limit, offset)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, entries)
+	}
+}
+
+func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn string, limit, offset int) ([]leaderboardEntry, error) {
+	query := fmt.Sprintf(`
+		SELECT
+			ls.proxy_wallet,
+			COALESCE(t.user_name, ''),
+			COALESCE(t.x_username, ''),
+			t.verified_badge,
+			COALESCE(t.profile_image, ''),
+			ls.pnl,
+			ls.win_rate,
+			ls.max_loss,
+			ls.profit_factor,
+			ls.consistency,
+			ls.sharpe,
+			ls.score
+		FROM leaderboard_scores ls
+		JOIN traders t ON t.proxy_wallet = ls.proxy_wallet
+		WHERE ls.time_window = $1
+		ORDER BY ls.%s DESC
+		LIMIT $2 OFFSET $3
+	`, sortColumn)
+
+	rows, err := db.Query(ctx, query, window, limit, offset)
+	if err != nil {
+		return nil, fmt.Errorf("query leaderboard: %w", err)
+	}
+	defer rows.Close()
+
+	entries := make([]leaderboardEntry, 0, limit)
+	rank := offset + 1
+	for rows.Next() {
+		var entry leaderboardEntry
+		entry.Rank = rank
+		if err := rows.Scan(
+			&entry.ProxyWallet,
+			&entry.UserName,
+			&entry.XUsername,
+			&entry.VerifiedBadge,
+			&entry.ProfileImage,
+			&entry.PnL,
+			&entry.WinRate,
+			&entry.MaxLoss,
+			&entry.ProfitFactor,
+			&entry.Consistency,
+			&entry.Sharpe,
+			&entry.Score,
+		); err != nil {
+			return nil, fmt.Errorf("scan leaderboard: %w", err)
+		}
+		entries = append(entries, entry)
+		rank++
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("iterate leaderboard: %w", err)
+	}
+	return entries, nil
+}
+
+func leaderboardSortColumn(sort string) (string, bool) {
+	switch sort {
+	case "", "score":
+		return "score", true
+	case "pnl":
+		return "pnl", true
+	case "sharpe":
+		return "sharpe", true
+	default:
+		return "", false
+	}
+}
+
+func parseIntQuery(r *http.Request, key string, fallback int) (int, error) {
+	value := r.URL.Query().Get(key)
+	if value == "" {
+		return fallback, nil
+	}
+	parsed, err := strconv.Atoi(value)
+	if err != nil {
+		return 0, fmt.Errorf("invalid %s", key)
+	}
+	return parsed, nil
+}
+
+func writeJSON(w http.ResponseWriter, status int, v any) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		log.Printf("warning: write json response failed: %v", err)
+	}
+}

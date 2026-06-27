@@ -12,7 +12,8 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 ## API references
 - Data API base: https://data-api.polymarket.com
 - Leaderboard: GET /v1/leaderboard?category=&timePeriod=&orderBy=&limit=&offset=
-  Response fields: rank, proxyWallet, userName, vol, pnl, profileImage, xUsername, verifiedBadge
+  Response fields: rank (string!), proxyWallet, userName, vol, pnl, profileImage,
+  xUsername, verifiedBadge
 - Positions: GET /positions?user=<wallet>
   Response fields: proxyWallet, asset, conditionId, size, avgPrice, initialValue,
   currentValue, cashPnl, percentPnl, totalBought, realizedPnl, curPrice, redeemable,
@@ -23,8 +24,14 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 - NOTE: rank/vol/pnl/size/price/etc. sometimes come back as JSON strings instead of
   numbers. Already handled via parseJSONFloat/parseJSONInt helpers in
   internal/polymarket/leaderboard.go — reuse these, do not redefine.
-- NOTE: Activity.Timestamp is Unix SECONDS (confirmed against real data on Jun 27).
+- NOTE: Activity.Timestamp is Unix SECONDS (confirmed against real data Jun 27).
   Convert with time.Unix(ts, 0).UTC(), not UnixMilli.
+- NOTE: trader_positions is a CURRENT SNAPSHOT, not historical — once a position
+  is redeemed/closed it may disappear from /positions entirely. A wallet's biggest
+  recent win can be invisible in trader_positions if already redeemed. This is why
+  trader_activity (which has REDEEM events with real timestamps) is the source of
+  truth for anything time-windowed; trader_positions is only used for lifetime/ALL
+  window win-rate, max-loss, profit-factor (see scoring.go below).
 
 ## DB schema (already applied)
 - traders(proxy_wallet PK, user_name, x_username, verified_badge, profile_image, first_seen_at, last_polled_at)
@@ -46,48 +53,46 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
   blind INSERT, since wallets get re-polled repeatedly.
 - API layer only ever reads from leaderboard_scores (precomputed) — never compute
   scores live on request.
+- Win/loss classification (locked in, don't reinterpret): a position is a WIN if
+  realizedPnl > 0, OR (redeemable == true AND cashPnl > 0). A LOSS if realizedPnl < 0,
+  OR (redeemable == true AND cashPnl < 0). For profit_factor/max_loss summing, use
+  the SAME value used to classify (realizedPnl if non-zero, else cashPnl if
+  redeemable) — not always raw cashPnl, to avoid sign mismatches between
+  classification and the summed amount. Open/unresolved positions are excluded
+  entirely from win_rate/profit_factor.
+- Score is scaled 0-100 (not 0-1) to visually match predicting.top's Score column.
 
-## What's already built (Day 1 — done, Jun 25-26)
+## What's already built (Day 1-3 — done, Jun 25-27)
 - internal/polymarket/client.go — base Client struct, generic get() helper
 - internal/polymarket/leaderboard.go — LeaderboardEntry, GetLeaderboard,
   parseJSONFloat/parseJSONInt (shared flexible-number decoders, reused everywhere)
 - internal/polymarket/activity.go — Position, Activity structs, GetPositions, GetActivity
 - internal/store/db.go — New(ctx, dsn) opens pgxpool.Pool
-- internal/store/traders.go — Trader struct, UpsertTrader, MarkPolled
+- internal/store/traders.go — Trader struct, UpsertTrader, MarkPolled, ListTrackedWallets
 - internal/store/positions.go — UpsertPosition (ON CONFLICT DO UPDATE — live snapshot)
 - internal/store/activity.go — InsertActivity (ON CONFLICT DO NOTHING — immutable history)
-- cmd/server/main.go — connects DB, seeds traders from leaderboard, chi server with
-  /health and /debug/leaderboard. Currently has a temporary single-test-wallet block
-  pulling positions/activity for entries[0] — this needs to generalize to ALL tracked
-  wallets today (see Today's goal below).
+- internal/store/scores.go — UpsertLeaderboardScore (ON CONFLICT DO UPDATE)
+- internal/scoring/scoring.go — RawMetrics, ComputeRawMetrics, ComputeAllRawMetrics
+  (win/loss classification from trader_positions for ALL window; daily flow from
+  trader_activity including REDEEM-as-inflow for consistency/sharpe),
+  LeaderboardScore, NormalizeAndScore (cohort min-max normalization, weighted
+  Score formula, scaled to 0-100)
+- cmd/server/poll.go — pollAllTraders, loops GetPositions/GetActivity over every
+  tracked wallet with 250ms delay, calls MarkPolled on success
+- cmd/server/main.go — connects DB, seeds traders, runs pollAllTraders, computes
+  + normalizes + saves leaderboard_scores for window "ALL", chi server with
+  /health and /debug/leaderboard (calls Polymarket live, kept as a debug tool)
 
-## Today's goal (Day 3 — Jun 27)
-1. DONE (Jun 27): Generalized ingestion to loop GetPositions/GetActivity over every
-   wallet in `traders`, with delay between calls, MarkPolled on success.
-2. Build the Score computation engine — a function that reads a wallet's stored
-   trader_activity + trader_positions rows (NOT live API calls) for a given time_window,
-   and computes:
-   - win/loss classification: a position is a WIN if realizedPnl > 0, OR
-     (redeemable == true AND cashPnl > 0). A position is a LOSS if realizedPnl < 0,
-     OR (redeemable == true AND cashPnl < 0). Open, non-redeemable positions with
-     no realized PnL are EXCLUDED entirely (outcome not yet known). This is a
-     pragmatic proxy for true win/loss since it doesn't use Polymarket's separate
-     closed-positions endpoint — document as a known simplification in README.
-   - win_rate: wins / (wins + losses), using the win/loss definition above
-   - max_loss: most negative cashPnl among loss positions in the window
-   - profit_factor: sum(cashPnl of wins) / abs(sum(cashPnl of losses)), capped at
-     10 if there are zero losses (avoid divide-by-zero / infinity)
-   - consistency: group trader_activity by calendar day in the window, compute net
-     PnL per day, consistency = (days with positive net PnL) / (active days)
-   - sharpe: mean(daily net PnL) / stddev(daily net PnL), using the same daily
-     series as consistency
-   - pnl: sum of cashPnl across all positions in the window (this is "returns")
-   - score: 0.25*consistency + 0.25*normalized_returns + 0.20*win_rate +
-     0.15*(1 - normalized_max_loss) + 0.15*normalized_profit_factor
-     Normalize returns, max_loss, and profit_factor via min-max scaling against
-     ALL tracked wallets in the same time_window (not in isolation) before
-     applying weights. win_rate and consistency are already 0-1, no normalization
-     needed. max_loss is inverted after normalizing since a smaller loss is better.
-3. Upsert results into leaderboard_scores per (proxy_wallet, time_window), starting
-   with windows '1D' and 'ALL' to prove correctness before expanding to all windows.
-4. Manually spot-check 2-3 wallets' computed scores against their raw activity by hand.
+## Known limitation (documented, not blocking)
+trader_positions has no per-trade timestamp, so position-based metrics (win_rate,
+max_loss, profit_factor) are currently only computed/valid for window "ALL", not
+"1D"/"WEEK"/"MONTH". Shorter windows would need a different approach (e.g., deriving
+everything from trader_activity's REDEEM/TRADE events with real timestamps instead).
+Scoped out for now given the assignment timeline.
+
+## Next goal (Day 4 — Jun 28)
+1. Build GET /leaderboard API endpoint reading from leaderboard_scores (window, sort,
+   limit, offset params), joined with traders for display info.
+2. Wrap pollAllTraders + scoring pipeline in a background goroutine so server startup
+   isn't blocked for ~2 minutes on every restart.
+3. Begin frontend (simple table, not full predicting.top clone) once API is solid.

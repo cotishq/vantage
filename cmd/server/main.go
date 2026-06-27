@@ -8,6 +8,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cotishq/vantage/internal/api"
 	"github.com/cotishq/vantage/internal/polymarket"
 	"github.com/cotishq/vantage/internal/scoring"
 	"github.com/cotishq/vantage/internal/store"
@@ -89,6 +90,7 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	r.Get("/leaderboard", api.GetLeaderboardHandler(db))
 
 	r.Get("/debug/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		entries, err := pm.GetLeaderboard(leaderboardParams)
