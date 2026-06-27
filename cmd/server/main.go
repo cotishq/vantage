@@ -6,8 +6,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/cotishq/vantage/internal/polymarket"
+	"github.com/cotishq/vantage/internal/scoring"
 	"github.com/cotishq/vantage/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -61,6 +63,23 @@ func main() {
 
 	if err := pollAllTraders(ctx, db, pm); err != nil {
 		log.Printf("warning: poll traders failed: %v", err)
+	}
+
+	// Compute, normalize, and persist leaderboard scores for the ALL window.
+	rawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, "ALL", time.Time{}, time.Now())
+	if err != nil {
+		log.Printf("warning: compute raw metrics failed: %v", err)
+	} else {
+		scores := scoring.NormalizeAndScore(rawMetrics)
+		saved := 0
+		for _, s := range scores {
+			if err := store.UpsertLeaderboardScore(ctx, db, s); err != nil {
+				log.Printf("warning: save score for %s failed: %v", s.ProxyWallet, err)
+				continue
+			}
+			saved++
+		}
+		log.Printf("computed and saved %d leaderboard scores", saved)
 	}
 
 	r := chi.NewRouter()

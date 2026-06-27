@@ -62,21 +62,32 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
   wallets today (see Today's goal below).
 
 ## Today's goal (Day 3 — Jun 27)
-1. Generalize ingestion: loop GetPositions/GetActivity over every wallet in `traders`
-   (not just one test wallet), with a small delay between calls to be polite to the API.
-   Call MarkPolled after each wallet succeeds.
+1. DONE (Jun 27): Generalized ingestion to loop GetPositions/GetActivity over every
+   wallet in `traders`, with delay between calls, MarkPolled on success.
 2. Build the Score computation engine — a function that reads a wallet's stored
    trader_activity + trader_positions rows (NOT live API calls) for a given time_window,
    and computes:
-   - win_rate: % of positions with cash_pnl > 0 among resolved/redeemed positions
-   - max_loss: largest single negative cash_pnl in the window
-   - profit_factor: sum(positive cash_pnl) / abs(sum(negative cash_pnl))
-   - consistency: % of active trading days in the window that were net-profitable
-   - sharpe: mean(daily PnL deltas) / stddev(daily PnL deltas)
+   - win/loss classification: a position is a WIN if realizedPnl > 0, OR
+     (redeemable == true AND cashPnl > 0). A position is a LOSS if realizedPnl < 0,
+     OR (redeemable == true AND cashPnl < 0). Open, non-redeemable positions with
+     no realized PnL are EXCLUDED entirely (outcome not yet known). This is a
+     pragmatic proxy for true win/loss since it doesn't use Polymarket's separate
+     closed-positions endpoint — document as a known simplification in README.
+   - win_rate: wins / (wins + losses), using the win/loss definition above
+   - max_loss: most negative cashPnl among loss positions in the window
+   - profit_factor: sum(cashPnl of wins) / abs(sum(cashPnl of losses)), capped at
+     10 if there are zero losses (avoid divide-by-zero / infinity)
+   - consistency: group trader_activity by calendar day in the window, compute net
+     PnL per day, consistency = (days with positive net PnL) / (active days)
+   - sharpe: mean(daily net PnL) / stddev(daily net PnL), using the same daily
+     series as consistency
+   - pnl: sum of cashPnl across all positions in the window (this is "returns")
    - score: 0.25*consistency + 0.25*normalized_returns + 0.20*win_rate +
-     0.15*normalized_max_loss + 0.15*profit_factor
-     (normalize each sub-metric to a comparable 0-1ish scale before weighting —
-     do not just plug raw PnL into a weighted sum with a 0-1 win rate)
+     0.15*(1 - normalized_max_loss) + 0.15*normalized_profit_factor
+     Normalize returns, max_loss, and profit_factor via min-max scaling against
+     ALL tracked wallets in the same time_window (not in isolation) before
+     applying weights. win_rate and consistency are already 0-1, no normalization
+     needed. max_loss is inverted after normalizing since a smaller loss is better.
 3. Upsert results into leaderboard_scores per (proxy_wallet, time_window), starting
    with windows '1D' and 'ALL' to prove correctness before expanding to all windows.
 4. Manually spot-check 2-3 wallets' computed scores against their raw activity by hand.
