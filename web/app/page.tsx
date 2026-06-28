@@ -18,6 +18,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -32,14 +39,11 @@ interface Trader {
   score: number;
 }
 
-type WindowOption = "ALL" | "MONTH" | "WEEK" | "DAY";
+type WindowOption = "ALL"
 type SortOption = "score" | "pnl" | "sharpe";
 
 const WINDOW_LABELS: Record<WindowOption, string> = {
   ALL: "All Time",
-  MONTH: "This Month",
-  WEEK: "This Week",
-  DAY: "Today",
 };
 
 const SORT_LABELS: Record<SortOption, string> = {
@@ -47,6 +51,8 @@ const SORT_LABELS: Record<SortOption, string> = {
   pnl: "PnL",
   sharpe: "Sharpe",
 };
+
+const PAGE_SIZE = 20;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -145,17 +151,18 @@ function SkeletonRows() {
 export default function LeaderboardPage() {
   const [selectedWindow, setSelectedWindow] = useState<WindowOption>("ALL");
   const [sort, setSort] = useState<SortOption>("score");
+  const [page, setPage] = useState(1);
   const [traders, setTraders] = useState<Trader[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasNextPage = traders.length === PAGE_SIZE;
 
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true);
-    setError(null);
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
-    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&limit=50`;
+    const offset = (page - 1) * PAGE_SIZE;
+    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&limit=${PAGE_SIZE}&offset=${offset}`;
 
     fetch(url, { signal: controller.signal })
       .then((res) => {
@@ -173,7 +180,7 @@ export default function LeaderboardPage() {
       });
 
     return () => controller.abort();
-  }, [selectedWindow, sort]);
+  }, [selectedWindow, sort, page]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -193,7 +200,12 @@ export default function LeaderboardPage() {
           <div className="flex items-center gap-3">
             <Select
               value={selectedWindow}
-              onValueChange={(v) => setSelectedWindow(v as WindowOption)}
+              onValueChange={(v) => {
+                setSelectedWindow(v as WindowOption);
+                setPage(1);
+                setLoading(true);
+                setError(null);
+              }}
             >
               <SelectTrigger
                 id="window-select"
@@ -216,7 +228,12 @@ export default function LeaderboardPage() {
 
             <Select
               value={sort}
-              onValueChange={(v) => setSort(v as SortOption)}
+              onValueChange={(v) => {
+                setSort(v as SortOption);
+                setPage(1);
+                setLoading(true);
+                setError(null);
+              }}
             >
               <SelectTrigger
                 id="sort-select"
@@ -285,13 +302,13 @@ export default function LeaderboardPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                traders.map((trader, idx) => (
+                traders.map((trader) => (
                   <TableRow
                     key={trader.proxy_wallet}
                     className="border-white/5 hover:bg-white/[0.025] transition-colors duration-150"
                   >
                     <TableCell className="text-sm text-zinc-500 font-sans tabular-nums">
-                      {idx + 1}
+                      {trader.rank}
                     </TableCell>
 
                     <TableCell>
@@ -327,6 +344,56 @@ export default function LeaderboardPage() {
             </TableBody>
           </Table>
         </div>
+
+        <Pagination className="mt-5">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href="#"
+                aria-disabled={page === 1 || loading}
+                tabIndex={page === 1 || loading ? -1 : undefined}
+                className={
+                  page === 1 || loading
+                    ? "pointer-events-none opacity-40"
+                    : "text-zinc-300 hover:text-white"
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (page > 1 && !loading) {
+                    setLoading(true);
+                    setError(null);
+                    setPage((current) => current - 1);
+                  }
+                }}
+              />
+            </PaginationItem>
+            <PaginationItem>
+              <span className="flex h-9 items-center px-4 text-sm text-zinc-400 font-sans">
+                Page {page}
+              </span>
+            </PaginationItem>
+            <PaginationItem>
+              <PaginationNext
+                href="#"
+                aria-disabled={!hasNextPage || loading}
+                tabIndex={!hasNextPage || loading ? -1 : undefined}
+                className={
+                  !hasNextPage || loading
+                    ? "pointer-events-none opacity-40"
+                    : "text-zinc-300 hover:text-white"
+                }
+                onClick={(event) => {
+                  event.preventDefault();
+                  if (hasNextPage && !loading) {
+                    setLoading(true);
+                    setError(null);
+                    setPage((current) => current + 1);
+                  }
+                }}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
 
         {!loading && traders.length > 0 && (
           <p className="text-xs text-zinc-600 font-sans mt-4 text-center">
