@@ -1,13 +1,15 @@
 # Vantage — Context for AI assistance
 
 ## What this is
-A Polymarket trader leaderboard + trending markets + recent trades app,
-built in Go for a 1-week job assignment (modeled after predicting.top).
+A Polymarket trader leaderboard + recent trades app, built in Go + Next.js
+for a 1-week job assignment (modeled after predicting.top). Trending Markets
+feature was scoped out given the timeline (see Known limitations).
 
 ## Stack
-- Go, chi router, pgx (raw SQL, no ORM)
-- Postgres
+- Backend: Go, chi router, pgx (raw SQL, no ORM), Postgres
+- Frontend: Next.js (App Router, TypeScript), Tailwind, shadcn/ui
 - No auth needed — Polymarket's Gamma + Data APIs are fully public
+- Backend runs on :8081, frontend dev server on :3001 (CORS configured to allow this origin)
 
 ## API references
 - Data API base: https://data-api.polymarket.com
@@ -21,6 +23,9 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 - Activity: GET /activity?user=<wallet>&type=TRADE,SPLIT,MERGE,REDEEM,REWARD,CONVERSION
   Response fields: proxyWallet, side, asset, conditionId, size, price, timestamp,
   title, slug, outcome, outcomeIndex, type
+- Trader's public Polymarket profile page (for linking trader names): 
+  https://polymarket.com/@{userName} — if userName is empty, render as plain
+  text, not a link (fallback pattern to wallet address not yet verified).
 - NOTE: rank/vol/pnl/size/price/etc. sometimes come back as JSON strings instead of
   numbers. Already handled via parseJSONFloat/parseJSONInt helpers in
   internal/polymarket/leaderboard.go — reuse these, do not redefine.
@@ -61,8 +66,12 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
   classification and the summed amount. Open/unresolved positions are excluded
   entirely from win_rate/profit_factor.
 - Score is scaled 0-100 (not 0-1) to visually match predicting.top's Score column.
+- Recent Trades' "Side" column = first letter of the Outcome field (e.g. "Yes"->"Y",
+  "Virtus.pro"->"V"), NOT the BUY/SELL trade side — confirmed against predicting.top
+  reference screenshots Jun 28.
 
-## What's already built (Day 1-3 — done, Jun 25-27)
+## What's already built (Day 1-4 — done, Jun 25-28)
+Backend:
 - internal/polymarket/client.go — base Client struct, generic get() helper
 - internal/polymarket/leaderboard.go — LeaderboardEntry, GetLeaderboard,
   parseJSONFloat/parseJSONInt (shared flexible-number decoders, reused everywhere)
@@ -72,27 +81,46 @@ built in Go for a 1-week job assignment (modeled after predicting.top).
 - internal/store/positions.go — UpsertPosition (ON CONFLICT DO UPDATE — live snapshot)
 - internal/store/activity.go — InsertActivity (ON CONFLICT DO NOTHING — immutable history)
 - internal/store/scores.go — UpsertLeaderboardScore (ON CONFLICT DO UPDATE)
-- internal/scoring/scoring.go — RawMetrics, ComputeRawMetrics, ComputeAllRawMetrics
-  (win/loss classification from trader_positions for ALL window; daily flow from
-  trader_activity including REDEEM-as-inflow for consistency/sharpe),
+- internal/scoring/scoring.go — RawMetrics, ComputeRawMetrics, ComputeAllRawMetrics,
   LeaderboardScore, NormalizeAndScore (cohort min-max normalization, weighted
   Score formula, scaled to 0-100)
+- internal/api/leaderboard.go — GetLeaderboardHandler for GET /leaderboard
+  (window, sort [score|pnl|sharpe], limit, offset params; joins traders for
+  display info; validates sort param, returns 400 on invalid value)
 - cmd/server/poll.go — pollAllTraders, loops GetPositions/GetActivity over every
   tracked wallet with 250ms delay, calls MarkPolled on success
-- cmd/server/main.go — connects DB, seeds traders, runs pollAllTraders, computes
-  + normalizes + saves leaderboard_scores for window "ALL", chi server with
-  /health and /debug/leaderboard (calls Polymarket live, kept as a debug tool)
+- cmd/server/main.go — connects DB, seeds traders, runs pollAllTraders + scoring
+  pipeline (window "ALL" only) in a background goroutine so server starts
+  immediately, chi server with CORS (allows localhost:3001), /health,
+  /leaderboard, /debug/leaderboard (debug tool, calls Polymarket live)
 
-## Known limitation (documented, not blocking)
-trader_positions has no per-trade timestamp, so position-based metrics (win_rate,
-max_loss, profit_factor) are currently only computed/valid for window "ALL", not
-"1D"/"WEEK"/"MONTH". Shorter windows would need a different approach (e.g., deriving
-everything from trader_activity's REDEEM/TRADE events with real timestamps instead).
-Scoped out for now given the assignment timeline.
+Frontend (web/ — Next.js App Router + TypeScript + Tailwind + shadcn):
+- app/page.tsx — leaderboard table (shadcn Table), window dropdown (currently
+  ONLY "All Time" — see Known limitations), sort dropdown (score/pnl/sharpe),
+  pagination (shadcn Pagination, pageSize=20, resets to page 1 on filter change),
+  color-coded PnL (green/red) and Score badges (green >=60, yellow 40-60, red <40)
 
-## Next goal (Day 4 — Jun 28)
-1. Build GET /leaderboard API endpoint reading from leaderboard_scores (window, sort,
-   limit, offset params), joined with traders for display info.
-2. Wrap pollAllTraders + scoring pipeline in a background goroutine so server startup
-   isn't blocked for ~2 minutes on every restart.
-3. Begin frontend (simple table, not full predicting.top clone) once API is solid.
+## Known limitations (documented, not blocking)
+- trader_positions has no per-trade timestamp, so position-based metrics (win_rate,
+  max_loss, profit_factor) are only computed/valid for window "ALL". The frontend's
+  window dropdown currently only offers "All Time" as a result — MONTH/WEEK/DAY
+  were intentionally hidden rather than shipped with misleading duplicate data.
+- Trending Markets feature (per-market mini-leaderboards) scoped out entirely
+  given the assignment timeline — noted as a "next step" in README.
+
+## Next goal (Day 4 continued — Jun 28)
+1. Build GET /recent-trades endpoint: params limit (default 20, max 100), offset
+   (default 0), minAmount (optional float, filters price*size >= minAmount). Query
+   trader_activity WHERE activity_type='TRADE', JOIN traders (user_name,
+   profile_image), LEFT JOIN leaderboard_scores (time_window='ALL') for score/sharpe
+   (LEFT JOIN since not every wallet has a score yet). Order by occurred_at DESC.
+   Returns: proxy_wallet, user_name, profile_image, market_title, outcome, price,
+   size, occurred_at, score (nullable), sharpe (nullable).
+2. Build app/trades/page.tsx: fetch /recent-trades on mount, auto-refresh every
+   15s merging new trades into the top (dedupe by proxy_wallet+market_title+
+   occurred_at composite key, cap displayed list at 50). Table columns: Trader
+   (avatar + name, linked to https://polymarket.com/@{userName}), Score/Sharpe
+   (badge, toggle between the two, default Sharpe), Market (title, truncated),
+   Side (first letter of outcome, uppercased), Price (cents), Amount (price*size,
+   currency), Time (relative). Nav links between "/" and "/trades".
+3. Add the same trader-name-as-profile-link pattern to app/page.tsx (leaderboard).

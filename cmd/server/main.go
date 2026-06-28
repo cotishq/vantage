@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -64,25 +65,13 @@ func main() {
 	}
 
 	go func() {
-		if err := pollAllTraders(ctx, db, pm); err != nil {
-			log.Printf("warning: poll traders failed: %v", err)
-		}
+		runPollAndScore(ctx, db, pm)
 
-		// Compute, normalize, and persist leaderboard scores for the ALL window.
-		rawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, "ALL", time.Time{}, time.Now())
-		if err != nil {
-			log.Printf("warning: compute raw metrics failed: %v", err)
-		} else {
-			scores := scoring.NormalizeAndScore(rawMetrics)
-			saved := 0
-			for _, s := range scores {
-				if err := store.UpsertLeaderboardScore(ctx, db, s); err != nil {
-					log.Printf("warning: save score for %s failed: %v", s.ProxyWallet, err)
-					continue
-				}
-				saved++
-			}
-			log.Printf("computed and saved %d leaderboard scores", saved)
+		ticker := time.NewTicker(5 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			runPollAndScore(ctx, db, pm)
 		}
 	}()
 	log.Println("background poll+score started, server is ready")
@@ -101,6 +90,7 @@ func main() {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
 	r.Get("/leaderboard", api.GetLeaderboardHandler(db))
+	r.Get("/recent-trades", api.GetRecentTradesHandler(db))
 
 	r.Get("/debug/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		entries, err := pm.GetLeaderboard(leaderboardParams)
@@ -124,6 +114,29 @@ func envOrDefault(key, fallback string) string {
 		return fallback
 	}
 	return value
+}
+
+func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client) {
+	if err := pollAllTraders(ctx, db, pm); err != nil {
+		log.Printf("warning: poll traders failed: %v", err)
+	}
+
+	// Compute, normalize, and persist leaderboard scores for the ALL window.
+	rawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, "ALL", time.Time{}, time.Now())
+	if err != nil {
+		log.Printf("warning: compute raw metrics failed: %v", err)
+	} else {
+		scores := scoring.NormalizeAndScore(rawMetrics)
+		saved := 0
+		for _, s := range scores {
+			if err := store.UpsertLeaderboardScore(ctx, db, s); err != nil {
+				log.Printf("warning: save score for %s failed: %v", s.ProxyWallet, err)
+				continue
+			}
+			saved++
+		}
+		log.Printf("computed and saved %d leaderboard scores", saved)
+	}
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

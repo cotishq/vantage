@@ -25,6 +25,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination";
+import { SiteNav } from "@/components/site-nav";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -39,7 +40,7 @@ interface Trader {
   score: number;
 }
 
-type WindowOption = "ALL"
+type WindowOption = "ALL";
 type SortOption = "score" | "pnl" | "sharpe";
 
 const WINDOW_LABELS: Record<WindowOption, string> = {
@@ -89,6 +90,7 @@ function scoreBadgeClass(score: number): string {
 
 function TraderCell({ trader }: { trader: Trader }) {
   const displayName = trader.user_name || truncateWallet(trader.proxy_wallet);
+  const nameClass = "font-medium text-sm truncate max-w-[160px]";
 
   return (
     <div className="flex items-center gap-3">
@@ -104,12 +106,21 @@ function TraderCell({ trader }: { trader: Trader }) {
           {displayName.slice(0, 2).toUpperCase()}
         </div>
       )}
-      <span
-        className="font-medium text-sm truncate max-w-[160px]"
-        title={displayName}
-      >
-        {displayName}
-      </span>
+      {trader.user_name ? (
+        <a
+          href={`https://polymarket.com/@${trader.user_name}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`${nameClass} text-zinc-100 hover:text-emerald-300`}
+          title={displayName}
+        >
+          {displayName}
+        </a>
+      ) : (
+        <span className={nameClass} title={displayName}>
+          {displayName}
+        </span>
+      )}
     </div>
   );
 }
@@ -198,6 +209,8 @@ export default function LeaderboardPage() {
 
           {/* Filters */}
           <div className="flex items-center gap-3">
+            <SiteNav />
+
             <Select
               value={selectedWindow}
               onValueChange={(v) => {
