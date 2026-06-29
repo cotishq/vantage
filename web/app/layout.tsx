@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Vantage — Polymarket Trader Leaderboard",
+  title: "Vantage - Polymarket Trader Leaderboard",
   description: "Track and rank the top Polymarket traders by PnL, win rate, and composite score.",
 };
 

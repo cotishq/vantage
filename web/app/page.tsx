@@ -38,6 +38,7 @@ interface Trader {
   win_rate: number;
   profit_factor: number;
   score: number;
+  computed_at?: string;
 }
 
 type WindowOption = "ALL";
@@ -84,6 +85,22 @@ function scoreBadgeClass(score: number): string {
   if (score >= 60) return "bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30";
   if (score >= 40) return "bg-amber-600/20 text-amber-400 border-amber-600/30 hover:bg-amber-600/30";
   return "bg-rose-600/20 text-rose-400 border-rose-600/30 hover:bg-rose-600/30";
+}
+
+function formatLastUpdated(dateStr: string): string {
+  try {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) return "";
+    return date.toLocaleString("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch (e) {
+    return "";
+  }
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -164,6 +181,7 @@ export default function LeaderboardPage() {
   const [sort, setSort] = useState<SortOption>("score");
   const [page, setPage] = useState(1);
   const [traders, setTraders] = useState<Trader[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const hasNextPage = traders.length === PAGE_SIZE;
@@ -182,6 +200,11 @@ export default function LeaderboardPage() {
       })
       .then((data: Trader[]) => {
         setTraders(data);
+        if (data.length > 0 && data[0].computed_at) {
+          setLastUpdated(data[0].computed_at);
+        } else {
+          setLastUpdated(null);
+        }
         setLoading(false);
       })
       .catch((err: Error) => {
@@ -202,9 +225,14 @@ export default function LeaderboardPage() {
             <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
               Vantage
             </h1>
-            <p className="text-sm text-zinc-500 font-sans font-normal">
+            <p className="text-sm text-zinc-400 font-sans font-normal">
               Polymarket Trader Leaderboard
             </p>
+            {lastUpdated && (
+              <p className="text-xs text-zinc-500 font-sans font-normal mt-0.5">
+                P&amp;L updated {formatLastUpdated(lastUpdated)}
+              </p>
+            )}
           </div>
 
           {/* Filters */}

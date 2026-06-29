@@ -7,24 +7,26 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type leaderboardEntry struct {
-	Rank          int     `json:"rank"`
-	ProxyWallet   string  `json:"proxy_wallet"`
-	UserName      string  `json:"user_name"`
-	XUsername     string  `json:"x_username"`
-	VerifiedBadge bool    `json:"verified_badge"`
-	ProfileImage  string  `json:"profile_image"`
-	PnL           float64 `json:"pnl"`
-	WinRate       float64 `json:"win_rate"`
-	MaxLoss       float64 `json:"max_loss"`
-	ProfitFactor  float64 `json:"profit_factor"`
-	Consistency   float64 `json:"consistency"`
-	Sharpe        float64 `json:"sharpe"`
-	Score         float64 `json:"score"`
+	Rank          int       `json:"rank"`
+	ProxyWallet   string    `json:"proxy_wallet"`
+	UserName      string    `json:"user_name"`
+	XUsername     string    `json:"x_username"`
+	VerifiedBadge bool      `json:"verified_badge"`
+	ProfileImage  string    `json:"profile_image"`
+	PnL           float64   `json:"pnl"`
+	WinRate       float64   `json:"win_rate"`
+	MaxLoss       float64   `json:"max_loss"`
+	ProfitFactor  float64   `json:"profit_factor"`
+	Consistency   float64   `json:"consistency"`
+	Sharpe        float64   `json:"sharpe"`
+	Score         float64   `json:"score"`
+	ComputedAt    time.Time `json:"computed_at"`
 }
 
 func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
@@ -84,7 +86,8 @@ func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn s
 			ls.profit_factor,
 			ls.consistency,
 			ls.sharpe,
-			ls.score
+			ls.score,
+			ls.computed_at
 		FROM leaderboard_scores ls
 		JOIN traders t ON t.proxy_wallet = ls.proxy_wallet
 		WHERE ls.time_window = $1
@@ -116,6 +119,7 @@ func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn s
 			&entry.Consistency,
 			&entry.Sharpe,
 			&entry.Score,
+			&entry.ComputedAt,
 		); err != nil {
 			return nil, fmt.Errorf("scan leaderboard: %w", err)
 		}

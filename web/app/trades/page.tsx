@@ -169,6 +169,7 @@ function TraderCell({ trade }: { trade: RecentTrade }) {
 export default function RecentTradesPage() {
   const [trades, setTrades] = useState<RecentTrade[]>([]);
   const [metricMode, setMetricMode] = useState<MetricMode>("sharpe");
+  const [minAmount, setMinAmount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -178,7 +179,8 @@ export default function RecentTradesPage() {
 
     const fetchTrades = async (initial = false) => {
       try {
-        const response = await fetch(`${baseUrl}/recent-trades?limit=20`);
+        const minAmountParam = minAmount ? `&minAmount=${minAmount}` : "";
+        const response = await fetch(`${baseUrl}/recent-trades?limit=20${minAmountParam}`);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
         const data = (await response.json()) as RecentTrade[];
@@ -196,6 +198,8 @@ export default function RecentTradesPage() {
       }
     };
 
+    setLoading(true);
+    setTrades([]);
     fetchTrades(true);
     const interval = window.setInterval(() => fetchTrades(false), 15_000);
 
@@ -203,7 +207,7 @@ export default function RecentTradesPage() {
       mounted = false;
       window.clearInterval(interval);
     };
-  }, []);
+  }, [minAmount]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -249,6 +253,33 @@ export default function RecentTradesPage() {
             Failed to load recent trades: {error}
           </div>
         )}
+        {/* Filter Pills */}
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-sans text-xs font-medium uppercase tracking-wider text-zinc-500">
+              Amount:
+            </span>
+            <div className="flex rounded-md border border-white/10 bg-zinc-950/40 p-0.5">
+              {[
+                { label: "All", value: null },
+                { label: "$100+", value: 100 },
+                { label: "$1k+", value: 1000 },
+                { label: "$10k+", value: 10000 },
+              ].map((pill) => (
+                <Button
+                  key={pill.label}
+                  type="button"
+                  size="sm"
+                  variant={minAmount === pill.value ? "secondary" : "ghost"}
+                  className="h-7 px-3 text-xs font-sans"
+                  onClick={() => setMinAmount(pill.value)}
+                >
+                  {pill.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
 
         <div className="overflow-hidden rounded-xl border border-white/5 bg-zinc-900/60 shadow-2xl shadow-black/40">
           <Table>
