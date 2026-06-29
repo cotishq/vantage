@@ -81,7 +81,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3001"},
+		AllowedOrigins: []string{"http://localhost:3001", "https://*.vercel.app"},
 		AllowedMethods: []string{"GET", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type"},
 	}))
