@@ -33,6 +33,7 @@ interface Trader {
   rank: number;
   proxy_wallet: string;
   user_name: string | null;
+  x_username: string | null;
   profile_image: string | null;
   pnl: number;
   win_rate: number;
@@ -126,21 +127,36 @@ function TraderCell({ trader }: { trader: Trader }) {
           {displayName.slice(0, 2).toUpperCase()}
         </div>
       )}
-      {trader.user_name ? (
-        <a
-          href={`https://polymarket.com/@${trader.user_name}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={`${nameClass} text-zinc-100 hover:text-emerald-300`}
-          title={displayName}
-        >
-          {displayName}
-        </a>
-      ) : (
-        <span className={nameClass} title={displayName}>
-          {displayName}
-        </span>
-      )}
+      <div className="flex items-center gap-1.5 min-w-0">
+        {trader.user_name ? (
+          <a
+            href={`https://polymarket.com/@${trader.user_name}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${nameClass} text-zinc-100 hover:text-emerald-300`}
+            title={displayName}
+          >
+            {displayName}
+          </a>
+        ) : (
+          <span className={nameClass} title={displayName}>
+            {displayName}
+          </span>
+        )}
+        {trader.x_username && (
+          <a
+            href={`https://x.com/${trader.x_username}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-zinc-500 hover:text-zinc-300 transition-colors flex-shrink-0"
+            title={`@${trader.x_username} on X`}
+          >
+            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+        )}
+      </div>
     </div>
   );
 }
@@ -183,6 +199,7 @@ export default function LeaderboardPage() {
   const [selectedWindow, setSelectedWindow] = useState<WindowOption>("ALL");
   const [sort, setSort] = useState<SortOption>("score");
   const [page, setPage] = useState(1);
+  const [xLinked, setXLinked] = useState(false);
   const [traders, setTraders] = useState<Trader[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,7 +213,7 @@ export default function LeaderboardPage() {
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const offset = (page - 1) * PAGE_SIZE;
-    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&limit=${PAGE_SIZE}&offset=${offset}`;
+    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}`;
 
     fetch(url, { signal: controller.signal })
       .then((res) => {
@@ -219,7 +236,7 @@ export default function LeaderboardPage() {
       });
 
     return () => controller.abort();
-  }, [selectedWindow, sort, page]);
+  }, [selectedWindow, sort, page, xLinked]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -243,6 +260,26 @@ export default function LeaderboardPage() {
           {/* Filters */}
           <div className="flex items-center gap-3">
             <SiteNav />
+
+            {/* X Linked Filter Pill */}
+            <button
+              onClick={() => {
+                setXLinked(!xLinked);
+                setPage(1);
+                setLoading(true);
+                setError(null);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium font-sans transition-colors ${
+                xLinked
+                  ? "bg-white border-transparent text-zinc-950 hover:bg-zinc-100"
+                  : "bg-zinc-950/40 border-white/10 text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+              }`}
+            >
+              <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+              </svg>
+              <span>linked</span>
+            </button>
 
             <Select
               value={selectedWindow}
@@ -464,7 +501,7 @@ export default function LeaderboardPage() {
 
         {!loading && traders.length > 0 && (
           <p className="text-xs text-zinc-600 font-sans mt-4 text-center">
-            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]}
+            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]}{xLinked && <> &middot; X linked only</>}
           </p>
         )}
       </div>

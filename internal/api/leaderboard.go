@@ -63,7 +63,9 @@ func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
 			offset = 0
 		}
 
-		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, limit, offset)
+		xLinked := r.URL.Query().Get("xLinked") == "true"
+
+		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, limit, offset, xLinked)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
@@ -72,7 +74,12 @@ func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn string, limit, offset int) ([]leaderboardEntry, error) {
+func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn string, limit, offset int, xLinked bool) ([]leaderboardEntry, error) {
+	whereClause := "WHERE ls.time_window = $1"
+	if xLinked {
+		whereClause += " AND t.x_username IS NOT NULL AND t.x_username != ''"
+	}
+
 	query := fmt.Sprintf(`
 		SELECT
 			ls.proxy_wallet,
@@ -90,10 +97,10 @@ func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn s
 			ls.computed_at
 		FROM leaderboard_scores ls
 		JOIN traders t ON t.proxy_wallet = ls.proxy_wallet
-		WHERE ls.time_window = $1
+		%s
 		ORDER BY ls.%s DESC
 		LIMIT $2 OFFSET $3
-	`, sortColumn)
+	`, whereClause, sortColumn)
 
 	rows, err := db.Query(ctx, query, window, limit, offset)
 	if err != nil {
