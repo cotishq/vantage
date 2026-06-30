@@ -218,6 +218,7 @@ export default function LeaderboardPage() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalCount, setTotalCount] = useState<number | null>(null);
   const [unfilteredCount, setUnfilteredCount] = useState<number | null>(null);
+  const [todayPnL, setTodayPnL] = useState<number | null>(null);
   const [traders, setTraders] = useState<Trader[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -261,6 +262,21 @@ export default function LeaderboardPage() {
   }, [searchInput]);
 
   useEffect(() => {
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+    fetch(`${baseUrl}/leaderboard/today-pnl`)
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.json();
+      })
+      .then((data: { today_pnl: number }) => {
+        setTodayPnL(data.today_pnl);
+      })
+      .catch((err) => {
+        console.error("Failed to fetch today PnL:", err);
+      });
+  }, [traders]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -302,17 +318,27 @@ export default function LeaderboardPage() {
       {/* Sticky header */}
       <div className="border-b border-white/5 bg-zinc-900/60 backdrop-blur-md sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
-              Vantage
-            </h1>
-            <p className="text-sm text-zinc-400 font-sans font-normal">
-              Polymarket Trader Leaderboard
-            </p>
-            {lastUpdated && (
-              <p className="text-xs text-zinc-500 font-sans font-normal mt-0.5">
-                P&amp;L updated {formatLastUpdated(lastUpdated)}
+          <div className="flex items-center gap-6">
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight text-white font-sans">
+                Vantage
+              </h1>
+              <p className="text-sm text-zinc-400 font-sans font-normal">
+                Polymarket Trader Leaderboard
               </p>
+              {lastUpdated && (
+                <p className="text-xs text-zinc-500 font-sans font-normal mt-0.5">
+                  P&amp;L updated {formatLastUpdated(lastUpdated)}
+                </p>
+              )}
+            </div>
+            {todayPnL !== null && (
+              <div className="bg-zinc-900/60 border border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5">
+                <span className="text-zinc-500 font-normal">Today:</span>{" "}
+                <span className={todayPnL >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+                  {todayPnL >= 0 ? "+" : ""}{formatCurrency(todayPnL)}
+                </span>
+              </div>
             )}
           </div>
 

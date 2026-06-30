@@ -92,6 +92,7 @@ func main() {
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 	})
+	r.Get("/leaderboard/today-pnl", api.GetTodayPnLHandler(db))
 	r.Get("/leaderboard", api.GetLeaderboardHandler(db))
 	r.Get("/recent-trades", api.GetRecentTradesHandler(db))
 	r.Get("/positions", api.GetTopPositionsHandler(db))

@@ -219,3 +219,16 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 		log.Printf("warning: write json response failed: %v", err)
 	}
 }
+
+func GetTodayPnLHandler(db *pgxpool.Pool) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var todayPnL float64
+		query := `SELECT COALESCE(SUM(pnl), 0) FROM leaderboard_scores WHERE time_window = 'DAY'`
+		err := db.QueryRow(r.Context(), query).Scan(&todayPnL)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"today_pnl": todayPnL})
+	}
+}
