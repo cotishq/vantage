@@ -38,6 +38,7 @@ interface Trader {
   pnl: number;
   win_rate: number;
   profit_factor: number;
+  sharpe: number;
   score: number;
   computed_at?: string;
 }
@@ -89,6 +90,12 @@ function scoreBadgeClass(score: number): string {
   if (score >= 60) return "bg-emerald-600/20 text-emerald-400 border-emerald-600/30 hover:bg-emerald-600/30";
   if (score >= 40) return "bg-amber-600/20 text-amber-400 border-amber-600/30 hover:bg-amber-600/30";
   return "bg-rose-600/20 text-rose-400 border-rose-600/30 hover:bg-rose-600/30";
+}
+
+function sharpeColorClass(sharpe: number): string {
+  if (sharpe >= 1.0) return "text-emerald-400";
+  if (sharpe >= 0.5) return "text-amber-400";
+  return "text-rose-400";
 }
 
 function formatLastUpdated(dateStr: string): string {
@@ -161,7 +168,7 @@ function TraderCell({ trader }: { trader: Trader }) {
   );
 }
 
-function SkeletonRows() {
+function SkeletonRows({ showSharpe }: { showSharpe: boolean }) {
   return (
     <>
       {Array.from({ length: 10 }).map((_, i) => (
@@ -184,6 +191,11 @@ function SkeletonRows() {
           <TableCell>
             <Skeleton className="h-4 w-16 ml-auto bg-zinc-700/60" />
           </TableCell>
+          {showSharpe && (
+            <TableCell>
+              <Skeleton className="h-4 w-12 ml-auto bg-zinc-700/60" />
+            </TableCell>
+          )}
           <TableCell>
             <Skeleton className="h-6 w-14 ml-auto rounded-full bg-zinc-700/60" />
           </TableCell>
@@ -198,6 +210,8 @@ function SkeletonRows() {
 export default function LeaderboardPage() {
   const [selectedWindow, setSelectedWindow] = useState<WindowOption>("ALL");
   const [sort, setSort] = useState<SortOption>("score");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [showSharpe, setShowSharpe] = useState(false);
   const [page, setPage] = useState(1);
   const [xLinked, setXLinked] = useState(false);
   const [traders, setTraders] = useState<Trader[]>([]);
@@ -208,12 +222,37 @@ export default function LeaderboardPage() {
   const hasNextPage = traders.length === PAGE_SIZE;
   const showWindowNote = selectedWindow !== "ALL" && !noteDismissed;
 
+  const handleSort = (field: SortOption) => {
+    if (sort === field) {
+      setSortOrder(sortOrder === "desc" ? "asc" : "desc");
+    } else {
+      setSort(field);
+      setSortOrder("desc");
+    }
+    setPage(1);
+    setLoading(true);
+    setError(null);
+  };
+
+  const getSharpeHeader = () => {
+    switch (selectedWindow) {
+      case "DAY":
+        return "Sharpe 1D";
+      case "WEEK":
+        return "Sharpe 7D";
+      case "MONTH":
+        return "Sharpe 30D";
+      default:
+        return "Sharpe";
+    }
+  };
+
   useEffect(() => {
     const controller = new AbortController();
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const offset = (page - 1) * PAGE_SIZE;
-    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}`;
+    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&order=${sortOrder}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}`;
 
     fetch(url, { signal: controller.signal })
       .then((res) => {
@@ -236,7 +275,7 @@ export default function LeaderboardPage() {
       });
 
     return () => controller.abort();
-  }, [selectedWindow, sort, page, xLinked]);
+  }, [selectedWindow, sort, sortOrder, page, xLinked]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -281,6 +320,20 @@ export default function LeaderboardPage() {
               <span>linked</span>
             </button>
 
+            {/* Sharpe Toggle Button */}
+            <button
+              onClick={() => {
+                setShowSharpe(!showSharpe);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium font-sans transition-colors ${
+                showSharpe
+                  ? "bg-white border-transparent text-zinc-950 hover:bg-zinc-100"
+                  : "bg-zinc-950/40 border-white/10 text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+              }`}
+            >
+              <span>Sharpe</span>
+            </button>
+
             <Select
               value={selectedWindow}
               onValueChange={(v) => {
@@ -305,34 +358,6 @@ export default function LeaderboardPage() {
                     className="text-zinc-200 focus:bg-zinc-700 focus:text-white"
                   >
                     {WINDOW_LABELS[key]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select
-              value={sort}
-              onValueChange={(v) => {
-                setSort(v as SortOption);
-                setPage(1);
-                setLoading(true);
-                setError(null);
-              }}
-            >
-              <SelectTrigger
-                id="sort-select"
-                className="w-[130px] bg-zinc-800 border-white/10 text-zinc-200 text-sm font-sans"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-zinc-800 border-white/10 text-zinc-200 font-sans">
-                {(Object.keys(SORT_LABELS) as SortOption[]).map((key) => (
-                  <SelectItem
-                    key={key}
-                    value={key}
-                    className="text-zinc-200 focus:bg-zinc-700 focus:text-white"
-                  >
-                    {SORT_LABELS[key]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -379,27 +404,56 @@ export default function LeaderboardPage() {
                 <TableHead className="text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">
                   Trader
                 </TableHead>
-                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">
-                  PnL
+                <TableHead
+                  onClick={() => handleSort("pnl")}
+                  className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold cursor-pointer select-none hover:text-zinc-300 transition-colors w-28"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>PnL</span>
+                    {sort === "pnl" && (
+                      <span className="text-zinc-300 font-bold">{sortOrder === "desc" ? "↓" : "↑"}</span>
+                    )}
+                  </div>
                 </TableHead>
-                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">
+                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold w-24">
                   Win Rate
                 </TableHead>
-                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">
+                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold w-28">
                   Profit Factor
                 </TableHead>
-                <TableHead className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">
-                  Score
+                {showSharpe && (
+                  <TableHead
+                    onClick={() => handleSort("sharpe")}
+                    className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold cursor-pointer select-none hover:text-zinc-300 transition-colors w-28"
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <span>{getSharpeHeader()}</span>
+                      {sort === "sharpe" && (
+                        <span className="text-zinc-300 font-bold">{sortOrder === "desc" ? "↓" : "↑"}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                )}
+                <TableHead
+                  onClick={() => handleSort("score")}
+                  className="text-right text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold cursor-pointer select-none hover:text-zinc-300 transition-colors w-24"
+                >
+                  <div className="flex items-center justify-end gap-1">
+                    <span>Score</span>
+                    {sort === "score" && (
+                      <span className="text-zinc-300 font-bold">{sortOrder === "desc" ? "↓" : "↑"}</span>
+                    )}
+                  </div>
                 </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <SkeletonRows />
+                <SkeletonRows showSharpe={showSharpe} />
               ) : traders.length === 0 ? (
                 <TableRow className="border-white/5 hover:bg-transparent">
                   <TableCell
-                    colSpan={6}
+                    colSpan={showSharpe ? 7 : 6}
                     className="text-center py-20 text-zinc-500 font-sans text-sm"
                   >
                     No data for this window yet.
@@ -434,6 +488,12 @@ export default function LeaderboardPage() {
                     <TableCell className="text-right font-mono text-sm text-zinc-300 font-sans tabular-nums">
                       {trader.profit_factor.toFixed(2)}x
                     </TableCell>
+
+                    {showSharpe && (
+                      <TableCell className={`text-right font-mono text-sm font-sans tabular-nums ${sharpeColorClass(trader.sharpe)}`}>
+                        {trader.sharpe !== undefined && trader.sharpe !== null ? trader.sharpe.toFixed(2) : "-"}
+                      </TableCell>
+                    )}
 
                     <TableCell className="text-right">
                       <Badge
@@ -501,7 +561,7 @@ export default function LeaderboardPage() {
 
         {!loading && traders.length > 0 && (
           <p className="text-xs text-zinc-600 font-sans mt-4 text-center">
-            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]}{xLinked && <> &middot; X linked only</>}
+            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]} ({sortOrder.toUpperCase()}){xLinked && <> &middot; X linked only</>}
           </p>
         )}
       </div>
