@@ -24,6 +24,8 @@ func UpsertPosition(ctx context.Context, db *pgxpool.Pool, walletAddr string, p 
 			percent_pnl,
 			realized_pnl,
 			redeemable,
+			cur_price,
+			slug,
 			snapshot_at
 		)
 		VALUES (
@@ -40,20 +42,24 @@ func UpsertPosition(ctx context.Context, db *pgxpool.Pool, walletAddr string, p 
 			$11,
 			$12,
 			$13,
+			$14,
+			$15,
 			now()
 		)
 		ON CONFLICT (proxy_wallet, condition_id, asset) DO UPDATE SET
-			market_title = EXCLUDED.market_title,
-			outcome = EXCLUDED.outcome,
-			size = EXCLUDED.size,
-			avg_price = EXCLUDED.avg_price,
+			market_title  = EXCLUDED.market_title,
+			outcome       = EXCLUDED.outcome,
+			size          = EXCLUDED.size,
+			avg_price     = EXCLUDED.avg_price,
 			initial_value = EXCLUDED.initial_value,
 			current_value = EXCLUDED.current_value,
-			cash_pnl = EXCLUDED.cash_pnl,
-			percent_pnl = EXCLUDED.percent_pnl,
-			realized_pnl = EXCLUDED.realized_pnl,
-			redeemable = EXCLUDED.redeemable,
-			snapshot_at = EXCLUDED.snapshot_at
+			cash_pnl      = EXCLUDED.cash_pnl,
+			percent_pnl   = EXCLUDED.percent_pnl,
+			realized_pnl  = EXCLUDED.realized_pnl,
+			redeemable    = EXCLUDED.redeemable,
+			cur_price     = EXCLUDED.cur_price,
+			slug          = EXCLUDED.slug,
+			snapshot_at   = EXCLUDED.snapshot_at
 	`
 
 	_, err := db.Exec(
@@ -72,6 +78,8 @@ func UpsertPosition(ctx context.Context, db *pgxpool.Pool, walletAddr string, p 
 		p.PercentPnl,
 		p.RealizedPnl,
 		p.Redeemable,
+		p.CurPrice,
+		p.Slug,
 	)
 	if err != nil {
 		return fmt.Errorf("upsert position %s %s %s: %w", walletAddr, p.ConditionID, p.Asset, err)

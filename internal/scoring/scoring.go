@@ -117,13 +117,17 @@ func ComputeAllRawMetrics(ctx context.Context, db *pgxpool.Pool, pm *polymarket.
 	}
 
 	metrics := make([]RawMetrics, 0, len(wallets))
-	for _, wallet := range wallets {
+	for i, wallet := range wallets {
 		raw, err := ComputeRawMetrics(ctx, db, pm, wallet, window, windowStart, windowEnd)
 		if err != nil {
 			log.Printf("warning: compute raw metrics for %s failed: %v", wallet, err)
 			continue
 		}
 		metrics = append(metrics, raw)
+		// Space out GetLeaderboardForUser calls to avoid back-to-back API bursts.
+		if i < len(wallets)-1 {
+			time.Sleep(100 * time.Millisecond)
+		}
 	}
 	return metrics, nil
 }

@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 const links = [
   { href: "/", label: "Leaderboard" },
   { href: "/trades", label: "Recent Trades" },
+  { href: "/positions", label: "Top Positions" },
 ];
 
 export function SiteNav() {

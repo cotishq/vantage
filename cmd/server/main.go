@@ -65,13 +65,15 @@ func main() {
 	}
 
 	go func() {
-		runPollAndScore(ctx, db, pm)
+		tickCount := 0
+		runPollAndScore(ctx, db, pm, tickCount)
 
 		ticker := time.NewTicker(5 * time.Minute)
 		defer ticker.Stop()
 
 		for range ticker.C {
-			runPollAndScore(ctx, db, pm)
+			tickCount++
+			runPollAndScore(ctx, db, pm, tickCount)
 		}
 	}()
 	log.Println("background poll+score started, server is ready")
@@ -91,6 +93,7 @@ func main() {
 	})
 	r.Get("/leaderboard", api.GetLeaderboardHandler(db))
 	r.Get("/recent-trades", api.GetRecentTradesHandler(db))
+	r.Get("/positions", api.GetTopPositionsHandler(db))
 
 	r.Get("/debug/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		entries, err := pm.GetLeaderboard(leaderboardParams)
@@ -116,7 +119,7 @@ func envOrDefault(key, fallback string) string {
 	return value
 }
 
-func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client) {
+func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client, tickCount int) {
 	if err := pollAllTraders(ctx, db, pm); err != nil {
 		log.Printf("warning: poll traders failed: %v", err)
 	}
@@ -154,6 +157,14 @@ func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Clien
 	// copied from the ALL window for context, because those metrics rely on
 	// trader_positions which is a current snapshot with no per-trade timestamps —
 	// genuine window-scoped reconstruction from activity events is a future task.
+	//
+	// Rate-limiting: DAY/WEEK/MONTH are only recomputed every 4th tick (~20 min)
+	// to reduce Polymarket API load. ALL is computed every tick as the primary window.
+	if tickCount%4 != 0 {
+		log.Printf("skipping DAY/WEEK/MONTH sub-windows on tick %d (runs every 4th tick)", tickCount)
+		return
+	}
+
 	now := time.Now().UTC()
 	subWindows := []struct {
 		name  string

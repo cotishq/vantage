@@ -67,7 +67,7 @@ func pollAllTraders(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client
 		}
 
 		if i < len(wallets)-1 {
-			time.Sleep(250 * time.Millisecond)
+			time.Sleep(500 * time.Millisecond)
 		}
 	}
 
