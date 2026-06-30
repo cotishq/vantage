@@ -96,6 +96,7 @@ func main() {
 	r.Get("/leaderboard", api.GetLeaderboardHandler(db))
 	r.Get("/recent-trades", api.GetRecentTradesHandler(db))
 	r.Get("/positions", api.GetTopPositionsHandler(db))
+	r.Get("/trending-markets", api.GetTrendingMarketsHandler(db))
 
 	r.Get("/debug/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		entries, err := pm.GetLeaderboard(leaderboardParams)

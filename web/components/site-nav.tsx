@@ -9,6 +9,7 @@ const links = [
   { href: "/", label: "Leaderboard" },
   { href: "/trades", label: "Recent Trades" },
   { href: "/positions", label: "Top Positions" },
+  { href: "/trending", label: "Trending Markets" },
 ];
 
 export function SiteNav() {
