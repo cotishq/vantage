@@ -209,7 +209,7 @@ function SkeletonRows({ showSharpe }: { showSharpe: boolean }) {
 
 export default function LeaderboardPage() {
   const [selectedWindow, setSelectedWindow] = useState<WindowOption>("ALL");
-  const [sort, setSort] = useState<SortOption>("score");
+  const [sort, setSort] = useState<SortOption>("pnl");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [showSharpe, setShowSharpe] = useState(false);
   const [page, setPage] = useState(1);

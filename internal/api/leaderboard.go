@@ -189,10 +189,10 @@ func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, 
 
 func leaderboardSortColumn(sort string) (string, bool) {
 	switch sort {
-	case "", "score":
-		return "score", true
-	case "pnl":
+	case "", "pnl":
 		return "pnl", true
+	case "score":
+		return "score", true
 	case "sharpe":
 		return "sharpe", true
 	default:
