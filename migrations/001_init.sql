@@ -43,6 +43,8 @@ CREATE TABLE IF NOT EXISTS trader_positions (
     percent_pnl      DOUBLE PRECISION NOT NULL DEFAULT 0,
     realized_pnl     DOUBLE PRECISION NOT NULL DEFAULT 0,
     redeemable       BOOLEAN NOT NULL DEFAULT FALSE,
+    cur_price        DOUBLE PRECISION NOT NULL DEFAULT 0,
+    slug             TEXT NOT NULL DEFAULT '',
     snapshot_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (proxy_wallet, condition_id, asset)
 );

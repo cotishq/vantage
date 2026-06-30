@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -33,6 +34,10 @@ func main() {
 	defer db.Close()
 
 	log.Println("connected to postgres")
+
+	if err := runDbMigrations(ctx, db); err != nil {
+		log.Fatalf("database migrations failed: %v", err)
+	}
 
 	pm := polymarket.NewClient()
 	leaderboardParams := polymarket.LeaderboardParams{
@@ -215,4 +220,50 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		log.Printf("warning: write json response failed: %v", err)
 	}
+}
+
+func runDbMigrations(ctx context.Context, db *pgxpool.Pool) error {
+	// check if cur_price exists in trader_positions
+	var hasCurPrice bool
+	err := db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_name='trader_positions' AND column_name='cur_price'
+		)
+	`).Scan(&hasCurPrice)
+	if err != nil {
+		return fmt.Errorf("check cur_price column: %w", err)
+	}
+
+	if !hasCurPrice {
+		log.Println("Migrating database: adding cur_price to trader_positions")
+		_, err = db.Exec(ctx, `ALTER TABLE trader_positions ADD COLUMN cur_price DOUBLE PRECISION NOT NULL DEFAULT 0`)
+		if err != nil {
+			return fmt.Errorf("add cur_price column: %w", err)
+		}
+	}
+
+	// check if slug exists in trader_positions
+	var hasSlug bool
+	err = db.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM information_schema.columns
+			WHERE table_name='trader_positions' AND column_name='slug'
+		)
+	`).Scan(&hasSlug)
+	if err != nil {
+		return fmt.Errorf("check slug column: %w", err)
+	}
+
+	if !hasSlug {
+		log.Println("Migrating database: adding slug to trader_positions")
+		_, err = db.Exec(ctx, `ALTER TABLE trader_positions ADD COLUMN slug TEXT NOT NULL DEFAULT ''`)
+		if err != nil {
+			return fmt.Errorf("add slug column: %w", err)
+		}
+	}
+
+	return nil
 }
