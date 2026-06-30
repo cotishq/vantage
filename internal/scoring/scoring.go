@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cotishq/vantage/internal/polymarket"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -61,23 +62,55 @@ func NormalizeAndScore(metrics []RawMetrics) []LeaderboardScore {
 	return scores
 }
 
-func ComputeRawMetrics(ctx context.Context, db *pgxpool.Pool, wallet string, window string, windowStart, windowEnd time.Time) (RawMetrics, error) {
+// windowToLeaderboardTimePeriod maps our internal window name to Polymarket's
+// timePeriod enum values. Returns false if the window is not recognized.
+func windowToLeaderboardTimePeriod(window string) (polymarket.LeaderboardTimePeriod, bool) {
+	switch strings.ToUpper(window) {
+	case "DAY":
+		return polymarket.LeaderboardTimePeriodDay, true
+	case "WEEK":
+		return polymarket.LeaderboardTimePeriodWeek, true
+	case "MONTH":
+		return polymarket.LeaderboardTimePeriodMonth, true
+	case "ALL":
+		return polymarket.LeaderboardTimePeriodAll, true
+	default:
+		return "", false
+	}
+}
+
+func ComputeRawMetrics(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client, wallet string, window string, windowStart, windowEnd time.Time) (RawMetrics, error) {
 	metrics := RawMetrics{
 		ProxyWallet: wallet,
 		TimeWindow:  window,
 	}
 
+	// win_rate, max_loss, profit_factor — computed from trader_positions snapshot.
+	// These are ALL-window lifetime metrics only; used as-is for all windows.
 	if err := computePositionMetrics(ctx, db, wallet, &metrics); err != nil {
 		return RawMetrics{}, err
 	}
+	// consistency, sharpe — computed from trader_activity, correctly window-scoped.
 	if err := computeActivityMetrics(ctx, db, wallet, windowStart, windowEnd, &metrics); err != nil {
 		return RawMetrics{}, err
+	}
+
+	// Fetch window-accurate PnL from Polymarket's leaderboard API.
+	// This overrides the activity-derived PnL for non-ALL windows (and also ALL, for consistency).
+	// If the user has no leaderboard entry for the period, PnL stays at 0.
+	if timePeriod, ok := windowToLeaderboardTimePeriod(window); ok {
+		entry, err := pm.GetLeaderboardForUser(wallet, timePeriod)
+		if err != nil {
+			log.Printf("warning: GetLeaderboardForUser %s %s: %v — falling back to PnL 0", wallet, window, err)
+		} else if entry != nil {
+			metrics.PnL = entry.Pnl
+		}
 	}
 
 	return metrics, nil
 }
 
-func ComputeAllRawMetrics(ctx context.Context, db *pgxpool.Pool, window string, windowStart, windowEnd time.Time) ([]RawMetrics, error) {
+func ComputeAllRawMetrics(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Client, window string, windowStart, windowEnd time.Time) ([]RawMetrics, error) {
 	wallets, err := listTrackedWallets(ctx, db)
 	if err != nil {
 		return nil, err
@@ -85,7 +118,7 @@ func ComputeAllRawMetrics(ctx context.Context, db *pgxpool.Pool, window string, 
 
 	metrics := make([]RawMetrics, 0, len(wallets))
 	for _, wallet := range wallets {
-		raw, err := ComputeRawMetrics(ctx, db, wallet, window, windowStart, windowEnd)
+		raw, err := ComputeRawMetrics(ctx, db, pm, wallet, window, windowStart, windowEnd)
 		if err != nil {
 			log.Printf("warning: compute raw metrics for %s failed: %v", wallet, err)
 			continue

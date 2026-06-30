@@ -21,10 +21,10 @@ const (
 type LeaderboardTimePeriod string
 
 const (
-	LeaderboardTimePeriodAll   LeaderboardTimePeriod = "all"
-	LeaderboardTimePeriodDay   LeaderboardTimePeriod = "day"
-	LeaderboardTimePeriodWeek  LeaderboardTimePeriod = "week"
-	LeaderboardTimePeriodMonth LeaderboardTimePeriod = "month"
+	LeaderboardTimePeriodAll   LeaderboardTimePeriod = "ALL"
+	LeaderboardTimePeriodDay   LeaderboardTimePeriod = "DAY"
+	LeaderboardTimePeriodWeek  LeaderboardTimePeriod = "WEEK"
+	LeaderboardTimePeriodMonth LeaderboardTimePeriod = "MONTH"
 )
 
 type LeaderboardOrderBy string
@@ -116,6 +116,24 @@ func (c *Client) GetLeaderboard(p LeaderboardParams) ([]LeaderboardEntry, error)
 	}
 	return entries, nil
 }
+
+// GetLeaderboardForUser fetches the leaderboard entry for a single wallet address
+// for the given time period. Returns nil, nil if the user has no entry for that period.
+func (c *Client) GetLeaderboardForUser(wallet string, timePeriod LeaderboardTimePeriod) (*LeaderboardEntry, error) {
+	params := url.Values{}
+	params.Set("user", wallet)
+	params.Set("timePeriod", string(timePeriod))
+
+	var entries []LeaderboardEntry
+	if err := c.get(dataAPIBaseURL, "/v1/leaderboard", params, &entries); err != nil {
+		return nil, err
+	}
+	if len(entries) == 0 {
+		return nil, nil
+	}
+	return &entries[0], nil
+}
+
 
 func parseJSONInt(raw json.RawMessage, field string) (int, error) {
 	if len(raw) == 0 || string(raw) == "null" {

@@ -122,22 +122,78 @@ func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Clien
 	}
 
 	// Compute, normalize, and persist leaderboard scores for the ALL window.
-	rawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, "ALL", time.Time{}, time.Now())
+	allRawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, pm, "ALL", time.Time{}, time.Now())
 	if err != nil {
-		log.Printf("warning: compute raw metrics failed: %v", err)
-	} else {
+		log.Printf("warning: compute raw metrics (ALL) failed: %v", err)
+		return
+	}
+	allScores := scoring.NormalizeAndScore(allRawMetrics)
+
+	// Build a lookup map so sub-windows can copy ALL-time values for metrics
+	// that aren't genuinely window-accurate yet.
+	allScoreByWallet := make(map[string]scoring.LeaderboardScore, len(allScores))
+	for _, s := range allScores {
+		allScoreByWallet[s.ProxyWallet] = s
+	}
+
+	savedAll := 0
+	for _, s := range allScores {
+		if err := store.UpsertLeaderboardScore(ctx, db, s); err != nil {
+			log.Printf("warning: save score for %s (ALL) failed: %v", s.ProxyWallet, err)
+			continue
+		}
+		savedAll++
+	}
+	log.Printf("computed and saved %d leaderboard scores (ALL)", savedAll)
+
+	// Compute and save DAY/WEEK/MONTH windows.
+	//
+	// Design note (intentional): DAY/WEEK/MONTH currently only have correct PnL
+	// (from Polymarket's leaderboard API) and Sharpe (from windowed activity).
+	// win_rate, max_loss, profit_factor, consistency, and the overall Score are
+	// copied from the ALL window for context, because those metrics rely on
+	// trader_positions which is a current snapshot with no per-trade timestamps —
+	// genuine window-scoped reconstruction from activity events is a future task.
+	now := time.Now().UTC()
+	subWindows := []struct {
+		name  string
+		start time.Time
+	}{
+		{"DAY", now.Add(-24 * time.Hour)},
+		{"WEEK", now.Add(-7 * 24 * time.Hour)},
+		{"MONTH", now.Add(-30 * 24 * time.Hour)},
+	}
+
+	for _, w := range subWindows {
+		rawMetrics, err := scoring.ComputeAllRawMetrics(ctx, db, pm, w.name, w.start, now)
+		if err != nil {
+			log.Printf("warning: compute raw metrics (%s) failed: %v", w.name, err)
+			continue
+		}
 		scores := scoring.NormalizeAndScore(rawMetrics)
+
 		saved := 0
 		for _, s := range scores {
+			allS, hasAll := allScoreByWallet[s.ProxyWallet]
+			if hasAll {
+				// Copy ALL-time values for metrics that aren't window-accurate yet.
+				// Consistency is intentionally NOT copied — it's computed from windowed
+				// activity (same source as Sharpe) and is genuinely window-scoped.
+				s.WinRate = allS.WinRate
+				s.MaxLoss = allS.MaxLoss
+				s.ProfitFactor = allS.ProfitFactor
+				s.Score = allS.Score
+			}
 			if err := store.UpsertLeaderboardScore(ctx, db, s); err != nil {
-				log.Printf("warning: save score for %s failed: %v", s.ProxyWallet, err)
+				log.Printf("warning: save score for %s (%s) failed: %v", s.ProxyWallet, w.name, err)
 				continue
 			}
 			saved++
 		}
-		log.Printf("computed and saved %d leaderboard scores", saved)
+		log.Printf("computed and saved %d leaderboard scores (%s)", saved, w.name)
 	}
 }
+
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

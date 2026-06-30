@@ -41,11 +41,14 @@ interface Trader {
   computed_at?: string;
 }
 
-type WindowOption = "ALL";
+type WindowOption = "ALL" | "MONTH" | "WEEK" | "DAY";
 type SortOption = "score" | "pnl" | "sharpe";
 
 const WINDOW_LABELS: Record<WindowOption, string> = {
   ALL: "All Time",
+  MONTH: "This Month",
+  WEEK: "This Week",
+  DAY: "Today",
 };
 
 const SORT_LABELS: Record<SortOption, string> = {
@@ -184,7 +187,9 @@ export default function LeaderboardPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [noteDismissed, setNoteDismissed] = useState(false);
   const hasNextPage = traders.length === PAGE_SIZE;
+  const showWindowNote = selectedWindow !== "ALL" && !noteDismissed;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -246,6 +251,7 @@ export default function LeaderboardPage() {
                 setPage(1);
                 setLoading(true);
                 setError(null);
+                setNoteDismissed(false);
               }}
             >
               <SelectTrigger
@@ -303,6 +309,26 @@ export default function LeaderboardPage() {
         {error && (
           <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 px-4 py-3 text-sm font-sans mb-6">
             Failed to load leaderboard: {error}
+          </div>
+        )}
+
+        {showWindowNote && (
+          <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm font-sans mb-5">
+            <p className="text-amber-400/80 leading-snug">
+              <span className="font-semibold text-amber-400">PnL</span> and{" "}
+              <span className="font-semibold text-amber-400">Sharpe</span> reflect{" "}
+              {WINDOW_LABELS[selectedWindow].toLowerCase()}.
+              {" "}Score, Win Rate, Max Loss, and Profit Factor currently show all-time values.
+            </p>
+            <button
+              onClick={() => setNoteDismissed(true)}
+              aria-label="Dismiss note"
+              className="text-amber-500/50 hover:text-amber-400 transition-colors flex-shrink-0 mt-px"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
+                <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
+              </svg>
+            </button>
           </div>
         )}
 
