@@ -214,12 +214,16 @@ export default function LeaderboardPage() {
   const [showSharpe, setShowSharpe] = useState(false);
   const [page, setPage] = useState(1);
   const [xLinked, setXLinked] = useState(false);
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [unfilteredCount, setUnfilteredCount] = useState<number | null>(null);
   const [traders, setTraders] = useState<Trader[]>([]);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [noteDismissed, setNoteDismissed] = useState(false);
-  const hasNextPage = traders.length === PAGE_SIZE;
+  const hasNextPage = totalCount !== null ? (page * PAGE_SIZE < totalCount) : (traders.length === PAGE_SIZE);
   const showWindowNote = selectedWindow !== "ALL" && !noteDismissed;
 
   const handleSort = (field: SortOption) => {
@@ -248,19 +252,35 @@ export default function LeaderboardPage() {
   };
 
   useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchInput);
+      setPage(1);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [searchInput]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const offset = (page - 1) * PAGE_SIZE;
-    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&order=${sortOrder}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}`;
+    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&order=${sortOrder}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}&search=${encodeURIComponent(debouncedSearch)}`;
 
     fetch(url, { signal: controller.signal })
-      .then((res) => {
+      .then(async (res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
+        const totalHeader = res.headers.get("X-Total-Count");
+        const total = totalHeader ? parseInt(totalHeader, 10) : 0;
+        const data = await res.json();
+        return { data, total };
       })
-      .then((data: Trader[]) => {
+      .then(({ data, total }) => {
         setTraders(data);
+        setTotalCount(total);
+        if (!xLinked && !debouncedSearch) {
+          setUnfilteredCount(total);
+        }
         if (data.length > 0 && data[0].computed_at) {
           setLastUpdated(data[0].computed_at);
         } else {
@@ -275,7 +295,7 @@ export default function LeaderboardPage() {
       });
 
     return () => controller.abort();
-  }, [selectedWindow, sort, sortOrder, page, xLinked]);
+  }, [selectedWindow, sort, sortOrder, page, xLinked, debouncedSearch]);
 
   return (
     <main className="min-h-screen bg-zinc-950 text-zinc-100">
@@ -373,6 +393,28 @@ export default function LeaderboardPage() {
             Failed to load leaderboard: {error}
           </div>
         )}
+
+        {/* Search bar & total count */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative w-72">
+            <input
+              type="text"
+              placeholder="Search traders..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full bg-zinc-900/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors font-sans"
+            />
+          </div>
+          <span className="text-sm text-zinc-400 font-sans font-medium">
+            {totalCount !== null && unfilteredCount !== null ? (
+              `${totalCount} of ${unfilteredCount} traders`
+            ) : totalCount !== null ? (
+              `${totalCount} traders`
+            ) : (
+              "Loading..."
+            )}
+          </span>
+        </div>
 
         {showWindowNote && (
           <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm font-sans mb-5">

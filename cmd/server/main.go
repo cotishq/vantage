@@ -86,6 +86,7 @@ func main() {
 		AllowedOrigins: []string{"http://localhost:3001", "https://*.vercel.app"},
 		AllowedMethods: []string{"GET", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type"},
+		ExposedHeaders: []string{"X-Total-Count"},
 	}))
 
 	r.Get("/health", func(w http.ResponseWriter, r *http.Request) {

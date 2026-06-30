@@ -68,20 +68,64 @@ func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
 		if order != "asc" && order != "desc" {
 			order = "desc"
 		}
+		search := r.URL.Query().Get("search")
 
-		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, order, limit, offset, xLinked)
+		totalCount, err := countLeaderboard(r.Context(), db, window, xLinked, search)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
+
+		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, order, limit, offset, xLinked, search)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+
+		w.Header().Set("X-Total-Count", strconv.Itoa(totalCount))
 		writeJSON(w, http.StatusOK, entries)
 	}
 }
 
-func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, order string, limit, offset int, xLinked bool) ([]leaderboardEntry, error) {
+func countLeaderboard(ctx context.Context, db *pgxpool.Pool, window string, xLinked bool, search string) (int, error) {
 	whereClause := "WHERE ls.time_window = $1"
 	if xLinked {
 		whereClause += " AND t.x_username IS NOT NULL AND t.x_username != ''"
+	}
+	var args []any
+	args = append(args, window)
+
+	if search != "" {
+		whereClause += " AND (t.user_name ILIKE $2 OR t.proxy_wallet ILIKE $2)"
+		args = append(args, "%"+search+"%")
+	}
+
+	query := fmt.Sprintf(`
+		SELECT COUNT(*)
+		FROM leaderboard_scores ls
+		JOIN traders t ON t.proxy_wallet = ls.proxy_wallet
+		%s
+	`, whereClause)
+
+	var count int
+	err := db.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, fmt.Errorf("count leaderboard: %w", err)
+	}
+	return count, nil
+}
+
+func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, order string, limit, offset int, xLinked bool, search string) ([]leaderboardEntry, error) {
+	whereClause := "WHERE ls.time_window = $1"
+	if xLinked {
+		whereClause += " AND t.x_username IS NOT NULL AND t.x_username != ''"
+	}
+	var args []any
+	args = append(args, window, limit, offset)
+
+	if search != "" {
+		whereClause += " AND (t.user_name ILIKE $4 OR t.proxy_wallet ILIKE $4)"
+		args = append(args, "%"+search+"%")
 	}
 
 	query := fmt.Sprintf(`
@@ -106,7 +150,7 @@ func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, 
 		LIMIT $2 OFFSET $3
 	`, whereClause, sortColumn, order)
 
-	rows, err := db.Query(ctx, query, window, limit, offset)
+	rows, err := db.Query(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("query leaderboard: %w", err)
 	}
