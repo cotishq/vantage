@@ -1,6 +1,7 @@
 package polymarket
 
 import (
+	"log"
 	"net/url"
 	"strconv"
 )
@@ -43,6 +44,35 @@ func (c *Client) GetMarketsByConditionIDs(ids []string) ([]Market, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	foundIDs := make(map[string]bool)
+	for _, m := range markets {
+		foundIDs[m.ConditionID] = true
+	}
+
+	var missingIDs []string
+	for _, id := range ids {
+		if !foundIDs[id] {
+			missingIDs = append(missingIDs, id)
+		}
+	}
+
+	if len(missingIDs) > 0 {
+		closedParams := url.Values{}
+		for _, id := range missingIDs {
+			closedParams.Add("condition_ids", id)
+		}
+		closedParams.Set("closed", "true")
+
+		var closedMarkets []Market
+		err := c.get("https://gamma-api.polymarket.com", "/markets", closedParams, &closedMarkets)
+		if err == nil {
+			markets = append(markets, closedMarkets...)
+		} else {
+			log.Printf("warning: fetching closed markets failed: %v", err)
+		}
+	}
+
 	return markets, nil
 }
 

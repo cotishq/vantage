@@ -351,8 +351,12 @@ export default function TrendingMarketsPage() {
 													{market.question}
 												</a>
 												{daysLeftText && (
-													<span className="text-[10px] text-zinc-500 font-sans mt-0.5 block">
-														{daysLeftText}
+													<span className="text-[10px] font-sans mt-0.5 block">
+														{daysLeftText === "Ended" ? (
+															<span className="text-rose-400 font-semibold">Ended</span>
+														) : (
+															<span className="text-zinc-500">{daysLeftText}</span>
+														)}
 													</span>
 												)}
 											</div>
