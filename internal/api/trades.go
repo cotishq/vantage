@@ -3,10 +3,12 @@ package api
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"strconv"
 	"time"
 
+	"github.com/cotishq/vantage/internal/polymarket"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -16,12 +18,16 @@ type recentTradeEntry struct {
 	UserName     string    `json:"user_name"`
 	ProfileImage string    `json:"profile_image"`
 	MarketTitle  string    `json:"market_title"`
+	MarketSlug   string    `json:"market_slug"`
+	MarketIcon   string    `json:"market_icon"`
+	MarketLink   string    `json:"market_link"`
 	Outcome      string    `json:"outcome"`
 	Price        float64   `json:"price"`
 	Size         float64   `json:"size"`
 	OccurredAt   time.Time `json:"occurred_at"`
 	Score        *float64  `json:"score"`
 	Sharpe       *float64  `json:"sharpe"`
+	ConditionID  string    `json:"-"`
 }
 
 func GetRecentTradesHandler(db *pgxpool.Pool) http.HandlerFunc {
@@ -58,6 +64,51 @@ func GetRecentTradesHandler(db *pgxpool.Pool) http.HandlerFunc {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
+
+		// Enrich trades with market images and clean links from Gamma API
+		conditionIDs := make([]string, 0, len(trades))
+		seen := make(map[string]bool)
+		for _, t := range trades {
+			if t.ConditionID != "" && !seen[t.ConditionID] {
+				conditionIDs = append(conditionIDs, t.ConditionID)
+				seen[t.ConditionID] = true
+			}
+		}
+
+		if len(conditionIDs) > 0 {
+			pm := polymarket.NewClient()
+			metadataList, err := pm.GetMarketsByConditionIDs(conditionIDs)
+			if err == nil {
+				metadataMap := make(map[string]polymarket.Market)
+				for _, meta := range metadataList {
+					metadataMap[meta.ConditionID] = meta
+				}
+
+				for i, t := range trades {
+					// Default fallback link using the stored market_slug
+					trades[i].MarketLink = fmt.Sprintf("https://polymarket.com/event/%s", t.MarketSlug)
+
+					if meta, found := metadataMap[t.ConditionID]; found {
+						trades[i].MarketIcon = meta.Image
+						if trades[i].MarketIcon == "" {
+							trades[i].MarketIcon = meta.Icon
+						}
+
+						if len(meta.Events) > 0 && meta.Events[0].Slug != "" {
+							trades[i].MarketLink = fmt.Sprintf("https://polymarket.com/event/%s", meta.Events[0].Slug)
+						} else if meta.Slug != "" {
+							trades[i].MarketLink = fmt.Sprintf("https://polymarket.com/market/%s", meta.Slug)
+						}
+					}
+				}
+			} else {
+				log.Printf("warning: recent trades GetMarketsByConditionIDs failed: %v", err)
+				for i, t := range trades {
+					trades[i].MarketLink = fmt.Sprintf("https://polymarket.com/event/%s", t.MarketSlug)
+				}
+			}
+		}
+
 		writeJSON(w, http.StatusOK, trades)
 	}
 }
@@ -69,12 +120,14 @@ func listRecentTrades(ctx context.Context, db *pgxpool.Pool, limit, offset int, 
 			COALESCE(t.user_name, ''),
 			COALESCE(t.profile_image, ''),
 			COALESCE(ta.market_title, ''),
+			COALESCE(ta.market_slug, ''),
 			COALESCE(ta.outcome, ''),
 			ta.price,
 			ta.size,
 			ta.occurred_at,
 			ls.score,
-			ls.sharpe
+			ls.sharpe,
+			ta.condition_id
 		FROM trader_activity ta
 		JOIN traders t ON t.proxy_wallet = ta.proxy_wallet
 		LEFT JOIN leaderboard_scores ls
@@ -102,12 +155,14 @@ func listRecentTrades(ctx context.Context, db *pgxpool.Pool, limit, offset int, 
 			&trade.UserName,
 			&trade.ProfileImage,
 			&trade.MarketTitle,
+			&trade.MarketSlug,
 			&trade.Outcome,
 			&trade.Price,
 			&trade.Size,
 			&trade.OccurredAt,
 			&score,
 			&sharpe,
+			&trade.ConditionID,
 		); err != nil {
 			return nil, fmt.Errorf("scan recent trade: %w", err)
 		}

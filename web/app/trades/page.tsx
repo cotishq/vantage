@@ -20,6 +20,9 @@ interface RecentTrade {
   user_name: string | null;
   profile_image: string | null;
   market_title: string;
+  market_slug: string;
+  market_icon: string;
+  market_link: string;
   outcome: string;
   price: number;
   size: number;
@@ -107,7 +110,10 @@ function SkeletonRows() {
             <Skeleton className="h-6 w-16 rounded-full bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-56 bg-zinc-200 dark:bg-zinc-700/60" />
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-6 w-6 rounded bg-zinc-200 dark:bg-zinc-700/60 flex-shrink-0" />
+              <Skeleton className="h-4 w-52 bg-zinc-200 dark:bg-zinc-700/60" />
+            </div>
           </TableCell>
           <TableCell>
             <Skeleton className="h-6 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700/60" />
@@ -342,12 +348,38 @@ export default function RecentTradesPage() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className="block max-w-[320px] truncate font-sans text-sm text-zinc-800 dark:text-zinc-200"
-                          title={trade.market_title}
-                        >
-                          {trade.market_title}
-                        </span>
+                        <div className="flex items-center gap-3">
+                          {trade.market_icon ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={trade.market_icon}
+                              alt=""
+                              className="h-6 w-6 rounded object-cover ring-1 ring-zinc-200 dark:ring-white/5 flex-shrink-0"
+                            />
+                          ) : (
+                            <div className="h-6 w-6 rounded bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-semibold text-zinc-400 ring-1 ring-zinc-200 dark:ring-white/5 flex-shrink-0">
+                              PM
+                            </div>
+                          )}
+                          {trade.market_link ? (
+                            <a
+                              href={trade.market_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block max-w-[280px] truncate font-sans text-sm text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-300 font-medium"
+                              title={trade.market_title}
+                            >
+                              {trade.market_title}
+                            </a>
+                          ) : (
+                            <span
+                              className="block max-w-[280px] truncate font-sans text-sm text-zinc-800 dark:text-zinc-200"
+                              title={trade.market_title}
+                            >
+                              {trade.market_title}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge className="border border-zinc-200 dark:border-zinc-600/40 bg-zinc-100 dark:bg-zinc-600/10 font-mono text-xs text-zinc-600 dark:text-zinc-300">
