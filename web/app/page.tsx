@@ -391,7 +391,7 @@ export default function LeaderboardPage() {
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium font-sans transition-colors ${
                 xLinked
-                  ? "bg-zinc-850 border-transparent text-zinc-100 hover:bg-zinc-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+                  ? "bg-zinc-900 border-transparent text-zinc-50 hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
                   : "bg-zinc-100 dark:bg-zinc-950/40 border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
@@ -408,7 +408,7 @@ export default function LeaderboardPage() {
               }}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium font-sans transition-colors ${
                 showSharpe
-                  ? "bg-zinc-850 border-transparent text-zinc-100 hover:bg-zinc-700 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
+                  ? "bg-zinc-900 border-transparent text-zinc-50 hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100"
                   : "bg-zinc-100 dark:bg-zinc-950/40 border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100"
               }`}
             >
