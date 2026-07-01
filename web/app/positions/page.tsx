@@ -253,8 +253,8 @@ export default function PositionsPage() {
 		<main className="min-h-screen bg-background text-foreground">
 			{/* Sticky header */}
 			<div className="border-b border-zinc-200 dark:border-white/5 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md sticky top-0 z-10">
-				<div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-					<div className="flex items-center gap-6">
+				<div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+					<div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
 						<div>
 							<h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white font-sans">
 								Vantage
@@ -269,7 +269,7 @@ export default function PositionsPage() {
 							)}
 						</div>
 						{todayPnL !== null && (
-							<div className="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5">
+							<div className="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5 w-fit">
 								<span className="text-zinc-500 dark:text-zinc-500 font-normal">Today:</span>{" "}
 								<span className={todayPnL >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
 									{todayPnL >= 0 ? "+" : ""}{formatCurrency(todayPnL)}
@@ -279,7 +279,7 @@ export default function PositionsPage() {
 					</div>
 
 					{/* Navigation */}
-					<div className="flex items-center gap-3">
+					<div className="flex items-center gap-3 w-full md:w-auto justify-end">
 						<SiteNav />
 					</div>
 				</div>
@@ -544,9 +544,9 @@ export default function PositionsPage() {
 
 									{/* List of positions with scroll */}
 									<CardContent className="p-5 pt-0 flex-1">
-										<div className="border border-zinc-200 dark:border-white/5 rounded-lg overflow-hidden bg-zinc-100/30 dark:bg-zinc-950/40">
+										<div className="border border-zinc-200 dark:border-white/5 rounded-lg overflow-x-auto bg-zinc-100/30 dark:bg-zinc-950/40">
 											{/* Position Table Headers */}
-											<div className="grid grid-cols-[1fr_35px_45px_45px_70px_80px] gap-2 px-3 py-1.5 border-b border-zinc-200 dark:border-white/5 text-[9px] uppercase font-bold tracking-wider text-zinc-500 font-sans bg-zinc-200/20 dark:bg-zinc-900/30">
+											<div className="grid grid-cols-[1fr_35px_45px_45px_70px_80px] gap-2 px-3 py-1.5 border-b border-zinc-200 dark:border-white/5 text-[9px] uppercase font-bold tracking-wider text-zinc-500 font-sans bg-zinc-200/20 dark:bg-zinc-900/30 min-w-[380px]">
 												<span>Trader</span>
 												<span className="text-center">Side</span>
 												<span className="text-right">Score</span>
@@ -564,7 +564,7 @@ export default function PositionsPage() {
 													return (
 														<div
 															key={pos.proxy_wallet + pos.outcome}
-															className="grid grid-cols-[1fr_35px_45px_45px_70px_80px] gap-2 px-3 py-2 items-center hover:bg-zinc-100/60 dark:hover:bg-white/[0.015] transition-colors text-xs font-sans"
+															className="grid grid-cols-[1fr_35px_45px_45px_70px_80px] gap-2 px-3 py-2 items-center hover:bg-zinc-100/60 dark:hover:bg-white/[0.015] transition-colors text-xs font-sans min-w-[380px]"
 														>
 															{/* Trader info */}
 															<div className="flex items-center gap-2 min-w-0">

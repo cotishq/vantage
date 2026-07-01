@@ -317,8 +317,8 @@ export default function LeaderboardPage() {
     <main className="min-h-screen bg-background text-foreground">
       {/* Sticky header */}
       <div className="border-b border-zinc-200 dark:border-white/5 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md sticky top-0 z-10">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-6">
+        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4 sm:gap-6 w-full sm:w-auto">
             <div>
               <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white font-sans">
                 Vantage
@@ -333,7 +333,7 @@ export default function LeaderboardPage() {
               )}
             </div>
             {todayPnL !== null && (
-              <div className="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5">
+              <div className="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5 w-fit">
                 <span className="text-zinc-500 dark:text-zinc-500 font-normal">Today:</span>{" "}
                 <span className={todayPnL >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
                   {todayPnL >= 0 ? "+" : ""}{formatCurrency(todayPnL)}
@@ -343,7 +343,7 @@ export default function LeaderboardPage() {
           </div>
 
           {/* Filters */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <SiteNav />
           </div>
         </div>
@@ -359,8 +359,8 @@ export default function LeaderboardPage() {
 
         {/* Search bar & filters */}
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-4">
-            <div className="relative w-72">
+          <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+            <div className="relative w-full sm:w-72">
               <input
                 type="text"
                 placeholder="Search traders..."
@@ -380,7 +380,7 @@ export default function LeaderboardPage() {
             </span>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {/* X Linked Filter Pill */}
             <button
               onClick={() => {
@@ -466,8 +466,8 @@ export default function LeaderboardPage() {
           </div>
         )}
 
-        <div className="rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 overflow-hidden shadow-2xl dark:shadow-black/40">
-          <Table>
+        <div className="rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 overflow-x-auto shadow-2xl dark:shadow-black/40">
+          <Table className="min-w-[800px]">
             <TableHeader>
               <TableRow className="border-zinc-200 dark:border-white/5 hover:bg-transparent">
                 <TableHead className="w-12 text-zinc-500 text-xs uppercase tracking-wider font-sans font-semibold">

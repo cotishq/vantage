@@ -218,7 +218,7 @@ export default function RecentTradesPage() {
   return (
     <main className="min-h-screen bg-background text-foreground">
       <div className="sticky top-0 z-10 border-b border-zinc-200 dark:border-white/5 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
+        <div className="mx-auto flex max-w-6xl flex-col md:flex-row md:items-center justify-between gap-4 px-6 py-4">
           <div>
             <h1 className="font-sans text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
               Vantage
@@ -227,7 +227,7 @@ export default function RecentTradesPage() {
               Recent Polymarket Trades
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
             <SiteNav />
           </div>
         </div>
@@ -240,7 +240,7 @@ export default function RecentTradesPage() {
           </div>
         )}
         {/* Filter Pills */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <span className="font-sans text-xs font-medium uppercase tracking-wider text-zinc-500">
               Amount:
@@ -288,8 +288,8 @@ export default function RecentTradesPage() {
           </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 shadow-2xl dark:shadow-black/40">
-          <Table>
+        <div className="overflow-x-auto rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 shadow-2xl dark:shadow-black/40">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow className="border-zinc-200 dark:border-white/5 hover:bg-transparent">
                 <TableHead className="font-sans text-xs font-semibold uppercase tracking-wider text-zinc-500">
