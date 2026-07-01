@@ -96,30 +96,30 @@ function SkeletonRows() {
   return (
     <>
       {Array.from({ length: 10 }).map((_, i) => (
-        <TableRow key={i} className="border-white/5">
+        <TableRow key={i} className="border-zinc-200 dark:border-white/5">
           <TableCell>
             <div className="flex items-center gap-3">
-              <Skeleton className="h-8 w-8 rounded-full bg-zinc-700/60" />
-              <Skeleton className="h-4 w-28 bg-zinc-700/60" />
+              <Skeleton className="h-8 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700/60" />
+              <Skeleton className="h-4 w-28 bg-zinc-200 dark:bg-zinc-700/60" />
             </div>
           </TableCell>
           <TableCell>
-            <Skeleton className="h-6 w-16 rounded-full bg-zinc-700/60" />
+            <Skeleton className="h-6 w-16 rounded-full bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-4 w-56 bg-zinc-700/60" />
+            <Skeleton className="h-4 w-56 bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="h-6 w-8 rounded-full bg-zinc-700/60" />
+            <Skeleton className="h-6 w-8 rounded-full bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="ml-auto h-4 w-12 bg-zinc-700/60" />
+            <Skeleton className="ml-auto h-4 w-12 bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="ml-auto h-4 w-20 bg-zinc-700/60" />
+            <Skeleton className="ml-auto h-4 w-20 bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
           <TableCell>
-            <Skeleton className="ml-auto h-4 w-20 bg-zinc-700/60" />
+            <Skeleton className="ml-auto h-4 w-20 bg-zinc-200 dark:bg-zinc-700/60" />
           </TableCell>
         </TableRow>
       ))}
@@ -137,10 +137,10 @@ function TraderCell({ trade }: { trade: RecentTrade }) {
         <img
           src={trade.profile_image}
           alt={displayName}
-          className="h-8 w-8 flex-shrink-0 rounded-full object-cover ring-1 ring-white/10"
+          className="h-8 w-8 flex-shrink-0 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-white/10"
         />
       ) : (
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-zinc-700 text-xs font-semibold text-zinc-400 ring-1 ring-white/10">
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 text-xs font-semibold text-zinc-500 dark:text-zinc-400 ring-1 ring-zinc-200 dark:ring-white/10">
           {initials(displayName)}
         </div>
       )}
@@ -149,14 +149,14 @@ function TraderCell({ trade }: { trade: RecentTrade }) {
           href={`https://polymarket.com/@${trade.user_name}`}
           target="_blank"
           rel="noopener noreferrer"
-          className="max-w-[150px] truncate text-sm font-medium text-zinc-100 hover:text-emerald-300"
+          className="max-w-[150px] truncate text-sm font-medium text-zinc-800 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-300"
           title={displayName}
         >
           {displayName}
         </a>
       ) : (
         <span
-          className="max-w-[150px] truncate text-sm font-medium text-zinc-100"
+          className="max-w-[150px] truncate text-sm font-medium text-zinc-800 dark:text-zinc-100"
           title={displayName}
         >
           {displayName}
@@ -210,11 +210,11 @@ export default function RecentTradesPage() {
   }, [minAmount]);
 
   return (
-    <main className="min-h-screen bg-zinc-950 text-zinc-100">
-      <div className="sticky top-0 z-10 border-b border-white/5 bg-zinc-900/60 backdrop-blur-md">
+    <main className="min-h-screen bg-background text-foreground">
+      <div className="sticky top-0 z-10 border-b border-zinc-200 dark:border-white/5 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-4">
           <div>
-            <h1 className="font-sans text-2xl font-bold tracking-tight text-white">
+            <h1 className="font-sans text-2xl font-bold tracking-tight text-zinc-900 dark:text-white">
               Vantage
             </h1>
             <p className="font-sans text-sm font-normal text-zinc-500">
@@ -223,26 +223,6 @@ export default function RecentTradesPage() {
           </div>
           <div className="flex items-center gap-3">
             <SiteNav />
-            <div className="flex rounded-md border border-white/10 bg-zinc-950/40 p-1">
-              <Button
-                type="button"
-                size="sm"
-                variant={metricMode === "score" ? "secondary" : "ghost"}
-                className="h-8 px-3"
-                onClick={() => setMetricMode("score")}
-              >
-                Score
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant={metricMode === "sharpe" ? "secondary" : "ghost"}
-                className="h-8 px-3"
-                onClick={() => setMetricMode("sharpe")}
-              >
-                Sharpe
-              </Button>
-            </div>
           </div>
         </div>
       </div>
@@ -259,7 +239,7 @@ export default function RecentTradesPage() {
             <span className="font-sans text-xs font-medium uppercase tracking-wider text-zinc-500">
               Amount:
             </span>
-            <div className="flex rounded-md border border-white/10 bg-zinc-950/40 p-0.5">
+            <div className="flex rounded-md border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-zinc-950/40 p-0.5">
               {[
                 { label: "All", value: null },
                 { label: "$100+", value: 100 },
@@ -279,12 +259,33 @@ export default function RecentTradesPage() {
               ))}
             </div>
           </div>
+
+          <div className="flex rounded-md border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-zinc-950/40 p-0.5">
+            <Button
+              type="button"
+              size="sm"
+              variant={metricMode === "score" ? "secondary" : "ghost"}
+              className="h-7 px-3 text-xs font-sans"
+              onClick={() => setMetricMode("score")}
+            >
+              Score
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={metricMode === "sharpe" ? "secondary" : "ghost"}
+              className="h-7 px-3 text-xs font-sans"
+              onClick={() => setMetricMode("sharpe")}
+            >
+              Sharpe
+            </Button>
+          </div>
         </div>
 
-        <div className="overflow-hidden rounded-xl border border-white/5 bg-zinc-900/60 shadow-2xl shadow-black/40">
+        <div className="overflow-hidden rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 shadow-2xl dark:shadow-black/40">
           <Table>
             <TableHeader>
-              <TableRow className="border-white/5 hover:bg-transparent">
+              <TableRow className="border-zinc-200 dark:border-white/5 hover:bg-transparent">
                 <TableHead className="font-sans text-xs font-semibold uppercase tracking-wider text-zinc-500">
                   Trader
                 </TableHead>
@@ -312,7 +313,7 @@ export default function RecentTradesPage() {
               {loading ? (
                 <SkeletonRows />
               ) : trades.length === 0 ? (
-                <TableRow className="border-white/5 hover:bg-transparent">
+                <TableRow className="border-zinc-200 dark:border-white/5 hover:bg-transparent">
                   <TableCell
                     colSpan={7}
                     className="py-20 text-center font-sans text-sm text-zinc-500"
@@ -328,7 +329,7 @@ export default function RecentTradesPage() {
                   return (
                     <TableRow
                       key={tradeKey(trade)}
-                      className="border-white/5 transition-colors duration-150 hover:bg-white/[0.025]"
+                      className="border-zinc-200 dark:border-white/5 transition-colors duration-150 hover:bg-zinc-100/50 dark:hover:bg-white/[0.025]"
                     >
                       <TableCell>
                         <TraderCell trade={trade} />
@@ -342,21 +343,21 @@ export default function RecentTradesPage() {
                       </TableCell>
                       <TableCell>
                         <span
-                          className="block max-w-[320px] truncate font-sans text-sm text-zinc-200"
+                          className="block max-w-[320px] truncate font-sans text-sm text-zinc-800 dark:text-zinc-200"
                           title={trade.market_title}
                         >
                           {trade.market_title}
                         </span>
                       </TableCell>
                       <TableCell>
-                        <Badge className="border border-zinc-600/40 bg-zinc-600/10 font-mono text-xs text-zinc-300">
+                        <Badge className="border border-zinc-200 dark:border-zinc-600/40 bg-zinc-100 dark:bg-zinc-600/10 font-mono text-xs text-zinc-600 dark:text-zinc-300">
                           {trade.outcome.slice(0, 1).toUpperCase()}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums text-zinc-300">
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
                         {(trade.price * 100).toFixed(0)}¢
                       </TableCell>
-                      <TableCell className="text-right font-mono text-sm tabular-nums text-zinc-300">
+                      <TableCell className="text-right font-mono text-sm tabular-nums text-zinc-700 dark:text-zinc-300">
                         {formatCurrency(trade.price * trade.size)}
                       </TableCell>
                       <TableCell className="text-right font-sans text-sm text-zinc-500">

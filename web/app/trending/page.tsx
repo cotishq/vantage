@@ -138,20 +138,20 @@ function SkeletonGrid() {
 	return (
 		<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 			{Array.from({ length: 6 }).map((_, i) => (
-				<Card key={i} className="border-white/5 bg-zinc-900/60 p-5 gap-4">
+				<Card key={i} className="border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 p-5 gap-4">
 					<div className="flex items-center gap-3">
-						<Skeleton className="h-10 w-10 rounded-lg bg-zinc-800" />
+						<Skeleton className="h-10 w-10 rounded-lg bg-zinc-200 dark:bg-zinc-800" />
 						<div className="flex-1 space-y-2">
-							<Skeleton className="h-4 w-3/4 bg-zinc-800" />
-							<Skeleton className="h-3 w-1/4 bg-zinc-800" />
+							<Skeleton className="h-4 w-3/4 bg-zinc-200 dark:bg-zinc-800" />
+							<Skeleton className="h-3 w-1/4 bg-zinc-200 dark:bg-zinc-800" />
 						</div>
 					</div>
 					<div className="space-y-3 mt-4">
-						<Skeleton className="h-16 w-full bg-zinc-800/60 rounded-lg" />
+						<Skeleton className="h-16 w-full bg-zinc-200/60 dark:bg-zinc-800/60 rounded-lg" />
 						<div className="space-y-2 pt-2">
-							<Skeleton className="h-8 w-full bg-zinc-800/40" />
-							<Skeleton className="h-8 w-full bg-zinc-800/40" />
-							<Skeleton className="h-8 w-full bg-zinc-800/40" />
+							<Skeleton className="h-8 w-full bg-zinc-200/50 dark:bg-zinc-800/40" />
+							<Skeleton className="h-8 w-full bg-zinc-200/50 dark:bg-zinc-800/40" />
+							<Skeleton className="h-8 w-full bg-zinc-200/50 dark:bg-zinc-800/40" />
 						</div>
 					</div>
 				</Card>
@@ -219,28 +219,28 @@ export default function TrendingMarketsPage() {
 	}, [selectedWindow]);
 
 	return (
-		<main className="min-h-screen bg-zinc-950 text-zinc-100">
+		<main className="min-h-screen bg-background text-foreground">
 			{/* Sticky header */}
-			<div className="border-b border-white/5 bg-zinc-900/60 backdrop-blur-md sticky top-0 z-10">
+			<div className="border-b border-zinc-200 dark:border-white/5 bg-white/80 dark:bg-zinc-900/60 backdrop-blur-md sticky top-0 z-10">
 				<div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
 					<div className="flex items-center gap-6">
 						<div>
-							<h1 className="text-2xl font-bold tracking-tight text-white font-sans">
+							<h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white font-sans">
 								Vantage
 							</h1>
-							<p className="text-sm text-zinc-400 font-sans font-normal">
+							<p className="text-sm text-zinc-500 dark:text-zinc-400 font-sans font-normal">
 								Polymarket Trader Leaderboard
 							</p>
 							{lastUpdated && (
-								<p className="text-xs text-zinc-500 font-sans font-normal mt-0.5">
+								<p className="text-xs text-zinc-400 dark:text-zinc-500 font-sans font-normal mt-0.5">
 									P&amp;L updated {formatLastUpdated(lastUpdated)}
 								</p>
 							)}
 						</div>
 						{todayPnL !== null && (
-							<div className="bg-zinc-900/60 border border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5">
-								<span className="text-zinc-500 font-normal">Today:</span>{" "}
-								<span className={todayPnL >= 0 ? "text-emerald-400 font-bold" : "text-rose-400 font-bold"}>
+							<div className="bg-zinc-100 dark:bg-zinc-900/60 border border-zinc-200 dark:border-white/5 rounded-lg px-3 py-1.5 font-sans font-semibold text-sm flex-shrink-0 flex items-center gap-1.5">
+								<span className="text-zinc-500 dark:text-zinc-500 font-normal">Today:</span>{" "}
+								<span className={todayPnL >= 0 ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-rose-600 dark:text-rose-400 font-bold"}>
 									{todayPnL >= 0 ? "+" : ""}{formatCurrency(todayPnL)}
 								</span>
 							</div>
@@ -259,16 +259,16 @@ export default function TrendingMarketsPage() {
 				{/* Top Controls Bar */}
 				<div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
 					<div>
-						<h2 className="text-xl font-bold tracking-tight text-white font-sans">
+						<h2 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white font-sans">
 							Trending Markets
 						</h2>
-						<p className="text-sm text-zinc-400 font-sans">
+						<p className="text-sm text-zinc-500 dark:text-zinc-400 font-sans">
 							Active markets with highest tracked cohort trading volume
 						</p>
 					</div>
 
 					{/* Window Toggles */}
-					<div className="flex items-center gap-1.5 rounded-md border border-white/10 bg-zinc-950/40 p-1 self-start">
+					<div className="flex items-center gap-1.5 rounded-md border border-zinc-200 dark:border-white/10 bg-zinc-100 dark:bg-zinc-950/40 p-1 self-start">
 						{(["1h", "6h", "24h", "3d", "1w"] as WindowOption[]).map((w) => {
 							const active = selectedWindow === w;
 							return (
@@ -277,8 +277,8 @@ export default function TrendingMarketsPage() {
 									onClick={() => setSelectedWindow(w)}
 									className={`rounded px-3 py-1 text-xs font-semibold font-sans transition-colors ${
 										active
-											? "bg-white text-zinc-950 shadow-md"
-											: "text-zinc-400 hover:bg-white/5 hover:text-zinc-100"
+											? "bg-white dark:bg-zinc-800 text-zinc-950 dark:text-zinc-50 shadow-md"
+											: "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100"
 									}`}
 								>
 									{w.toUpperCase()}
@@ -320,7 +320,7 @@ export default function TrendingMarketsPage() {
 							return (
 								<Card
 									key={market.id}
-									className="border-white/5 bg-zinc-900/60 overflow-hidden shadow-2xl hover:border-white/10 hover:bg-zinc-900/80 transition-all duration-200"
+									className="border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 overflow-hidden shadow-2xl hover:border-zinc-300 dark:hover:border-white/10 hover:bg-zinc-100/30 dark:hover:bg-zinc-900/80 transition-all duration-200"
 								>
 									<CardHeader className="flex flex-row items-start justify-between gap-4 p-5 pb-3">
 										<div className="flex items-start gap-3 min-w-0">
@@ -345,7 +345,7 @@ export default function TrendingMarketsPage() {
 													}
 													target="_blank"
 													rel="noopener noreferrer"
-													className="text-sm font-bold text-zinc-100 hover:text-emerald-300 font-sans line-clamp-2 leading-snug"
+													className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-emerald-600 dark:hover:text-emerald-300 font-sans line-clamp-2 leading-snug"
 													title={market.question || ""}
 												>
 													{market.question}
@@ -365,7 +365,7 @@ export default function TrendingMarketsPage() {
 											<CardAction>
 												<span
 													className={`text-sm font-bold font-mono ${
-														currentProbability >= 50 ? "text-emerald-400" : "text-rose-400"
+														currentProbability >= 50 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
 													}`}
 												>
 													{currentProbability}%
@@ -376,24 +376,24 @@ export default function TrendingMarketsPage() {
 
 									<CardContent className="p-5 pt-0 space-y-4">
 										{/* Statistics Row */}
-										<div className="grid grid-cols-3 gap-2 py-2 px-3 rounded-lg bg-zinc-950/40 border border-white/5 text-center text-[11px] font-sans">
+										<div className="grid grid-cols-3 gap-2 py-2 px-3 rounded-lg bg-zinc-100 dark:bg-zinc-950/40 border border-zinc-200 dark:border-white/5 text-center text-[11px] font-sans">
 											<div>
-												<span className="text-zinc-500 block">Cohort Volume</span>
-												<span className="text-zinc-200 font-semibold font-mono">
+												<span className="text-zinc-550 dark:text-zinc-550 block">Cohort Volume</span>
+												<span className="text-zinc-800 dark:text-zinc-200 font-semibold font-mono">
 													{formatCurrency(stats.cohort_volume)}
 												</span>
 											</div>
 											<div>
-												<span className="text-zinc-500 block">Tracked Traders</span>
-												<span className="text-zinc-200 font-semibold font-mono">
+												<span className="text-zinc-550 dark:text-zinc-550 block">Tracked Traders</span>
+												<span className="text-zinc-800 dark:text-zinc-200 font-semibold font-mono">
 													{stats.traders_count}
 												</span>
 											</div>
 											<div>
-												<span className="text-zinc-500 block">Cohort Inflow</span>
+												<span className="text-zinc-550 dark:text-zinc-550 block">Cohort Inflow</span>
 												<span
 													className={`font-semibold font-mono ${
-														stats.cohort_inflow >= 0 ? "text-emerald-400" : "text-rose-400"
+														stats.cohort_inflow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
 													}`}
 												>
 													{stats.cohort_inflow >= 0 ? "+" : ""}
@@ -404,7 +404,7 @@ export default function TrendingMarketsPage() {
 
 										{/* Top Traders Section */}
 										<div className="space-y-2">
-											<div className="flex items-center justify-between text-[10px] uppercase font-semibold text-zinc-500 font-sans border-b border-white/5 pb-1">
+											<div className="flex items-center justify-between text-[10px] uppercase font-semibold text-zinc-500 font-sans border-b border-zinc-200 dark:border-white/5 pb-1">
 												<span>Trader</span>
 												<div className="flex gap-6">
 													<span className="w-10 text-right">TXs</span>
@@ -424,7 +424,7 @@ export default function TrendingMarketsPage() {
 														return (
 															<div
 																key={trader.proxy_wallet}
-																className="flex items-center justify-between text-xs font-sans hover:bg-white/[0.01] py-1 rounded transition-colors"
+																className="flex items-center justify-between text-xs font-sans hover:bg-zinc-100/30 dark:hover:bg-white/[0.01] py-1 rounded transition-colors"
 															>
 																<div className="flex items-center gap-2 min-w-0">
 																	{trader.profile_image ? (
@@ -432,7 +432,7 @@ export default function TrendingMarketsPage() {
 																		<img
 																			src={trader.profile_image}
 																			alt=""
-																			className="h-5 w-5 rounded-full object-cover ring-1 ring-white/5 flex-shrink-0"
+																			className="h-5 w-5 rounded-full object-cover ring-1 ring-zinc-200 dark:ring-white/5 flex-shrink-0"
 																		/>
 																	) : (
 																		<div className="h-5 w-5 rounded-full bg-zinc-800 flex items-center justify-center text-[9px] font-semibold text-zinc-500 ring-1 ring-white/5 flex-shrink-0">
@@ -444,14 +444,14 @@ export default function TrendingMarketsPage() {
 																			href={`https://polymarket.com/@${trader.user_name}`}
 																			target="_blank"
 																			rel="noopener noreferrer"
-																			className="text-zinc-200 hover:text-emerald-300 font-medium truncate max-w-[100px]"
+																			className="text-zinc-800 dark:text-zinc-200 hover:text-emerald-600 dark:hover:text-emerald-300 font-medium truncate max-w-[100px]"
 																			title={trader.user_name}
 																		>
 																			{trader.user_name}
 																		</a>
 																	) : (
 																		<span
-																			className="text-zinc-400 font-medium truncate max-w-[100px]"
+																			className="text-zinc-650 dark:text-zinc-400 font-medium truncate max-w-[100px]"
 																			title={trader.proxy_wallet}
 																		>
 																			{displayName}
@@ -462,7 +462,7 @@ export default function TrendingMarketsPage() {
 																			href={`https://x.com/${trader.x_username}`}
 																			target="_blank"
 																			rel="noopener noreferrer"
-																			className="text-zinc-600 hover:text-zinc-400 transition-colors flex-shrink-0"
+																			className="text-zinc-450 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors flex-shrink-0"
 																			title={`@${trader.x_username} on X`}
 																		>
 																			<svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24">
@@ -474,19 +474,19 @@ export default function TrendingMarketsPage() {
 
 																<div className="flex gap-6 font-mono text-[11px] tabular-nums">
 																	<span className="w-10 text-right text-zinc-400">
-																		<span className="text-emerald-500">{trader.buys_count}</span>
-																		<span className="text-zinc-600">/</span>
-																		<span className="text-rose-500">{trader.sells_count}</span>
+																		<span className="text-emerald-600 dark:text-emerald-500">{trader.buys_count}</span>
+																		<span className="text-zinc-400 dark:text-zinc-600">/</span>
+																		<span className="text-rose-600 dark:text-rose-500">{trader.sells_count}</span>
 																	</span>
 																	<span
 																		className={`w-16 text-right font-medium ${
-																			trader.net_inflow >= 0 ? "text-emerald-400" : "text-rose-400"
+																			trader.net_inflow >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
 																		}`}
 																	>
 																		{trader.net_inflow >= 0 ? "+" : ""}
 																		{formatCurrency(trader.net_inflow)}
 																	</span>
-																	<span className="w-8 text-right text-zinc-500">
+																	<span className="w-8 text-right text-zinc-450 dark:text-zinc-550">
 																		{formatRelativeTime(trader.last_trade_at)}
 																	</span>
 																</div>
