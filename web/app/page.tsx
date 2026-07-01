@@ -345,7 +345,42 @@ export default function LeaderboardPage() {
           {/* Filters */}
           <div className="flex items-center gap-3">
             <SiteNav />
+          </div>
+        </div>
+      </div>
 
+      {/* Content */}
+      <div className="max-w-6xl mx-auto px-6 py-8">
+        {error && (
+          <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 px-4 py-3 text-sm font-sans mb-6">
+            Failed to load leaderboard: {error}
+          </div>
+        )}
+
+        {/* Search bar & filters */}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="relative w-72">
+              <input
+                type="text"
+                placeholder="Search traders..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full bg-zinc-900/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors font-sans"
+              />
+            </div>
+            <span className="text-sm text-zinc-400 font-sans font-medium">
+              {totalCount !== null && unfilteredCount !== null ? (
+                `${totalCount} of ${unfilteredCount} traders`
+              ) : totalCount !== null ? (
+                `${totalCount} traders`
+              ) : (
+                "Loading..."
+              )}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3">
             {/* X Linked Filter Pill */}
             <button
               onClick={() => {
@@ -409,37 +444,6 @@ export default function LeaderboardPage() {
               </SelectContent>
             </Select>
           </div>
-        </div>
-      </div>
-
-      {/* Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {error && (
-          <div className="rounded-lg border border-rose-500/20 bg-rose-500/10 text-rose-400 px-4 py-3 text-sm font-sans mb-6">
-            Failed to load leaderboard: {error}
-          </div>
-        )}
-
-        {/* Search bar & total count */}
-        <div className="flex items-center gap-4 mb-6">
-          <div className="relative w-72">
-            <input
-              type="text"
-              placeholder="Search traders..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              className="w-full bg-zinc-900/80 border border-white/10 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-700 transition-colors font-sans"
-            />
-          </div>
-          <span className="text-sm text-zinc-400 font-sans font-medium">
-            {totalCount !== null && unfilteredCount !== null ? (
-              `${totalCount} of ${unfilteredCount} traders`
-            ) : totalCount !== null ? (
-              `${totalCount} traders`
-            ) : (
-              "Loading..."
-            )}
-          </span>
         </div>
 
         {showWindowNote && (
