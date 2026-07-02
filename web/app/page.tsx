@@ -109,7 +109,7 @@ function formatLastUpdated(dateStr: string): string {
       minute: "2-digit",
       hour12: true,
     });
-  } catch (e) {
+  } catch {
     return "";
   }
 }
@@ -214,6 +214,7 @@ export default function LeaderboardPage() {
   const [showSharpe, setShowSharpe] = useState(false);
   const [page, setPage] = useState(1);
   const [xLinked, setXLinked] = useState(false);
+  const [profitable, setProfitable] = useState(true);
   const [searchInput, setSearchInput] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [totalCount, setTotalCount] = useState<number | null>(null);
@@ -223,9 +224,7 @@ export default function LeaderboardPage() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [noteDismissed, setNoteDismissed] = useState(false);
   const hasNextPage = totalCount !== null ? (page * PAGE_SIZE < totalCount) : (traders.length === PAGE_SIZE);
-  const showWindowNote = selectedWindow !== "ALL" && !noteDismissed;
 
   const handleSort = (field: SortOption) => {
     if (sort === field) {
@@ -281,7 +280,8 @@ export default function LeaderboardPage() {
 
     const baseUrl = process.env.NEXT_PUBLIC_API_URL;
     const offset = (page - 1) * PAGE_SIZE;
-    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&order=${sortOrder}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}&search=${encodeURIComponent(debouncedSearch)}`;
+    const profitableParam = profitable ? "&profitable=true" : "";
+    const url = `${baseUrl}/leaderboard?window=${selectedWindow}&sort=${sort}&order=${sortOrder}&limit=${PAGE_SIZE}&offset=${offset}&xLinked=${xLinked}&search=${encodeURIComponent(debouncedSearch)}${profitableParam}`;
 
     fetch(url, { signal: controller.signal })
       .then(async (res) => {
@@ -294,7 +294,7 @@ export default function LeaderboardPage() {
       .then(({ data, total }) => {
         setTraders(data);
         setTotalCount(total);
-        if (!xLinked && !debouncedSearch) {
+        if (!xLinked && !debouncedSearch && !profitable) {
           setUnfilteredCount(total);
         }
         if (data.length > 0 && data[0].computed_at) {
@@ -311,7 +311,7 @@ export default function LeaderboardPage() {
       });
 
     return () => controller.abort();
-  }, [selectedWindow, sort, sortOrder, page, xLinked, debouncedSearch]);
+  }, [selectedWindow, sort, sortOrder, page, xLinked, profitable, debouncedSearch]);
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -401,6 +401,23 @@ export default function LeaderboardPage() {
               <span>linked</span>
             </button>
 
+            {/* Profitable Filter Pill */}
+            <button
+              onClick={() => {
+                setProfitable(!profitable);
+                setPage(1);
+                setLoading(true);
+                setError(null);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-sm font-medium font-sans transition-colors ${
+                profitable
+                  ? "bg-emerald-600 border-transparent text-white hover:bg-emerald-500"
+                  : "bg-zinc-100 dark:bg-zinc-950/40 border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/50 dark:hover:bg-white/5 hover:text-zinc-900 dark:hover:text-zinc-100"
+              }`}
+            >
+              <span>Profitable Only</span>
+            </button>
+
             {/* Sharpe Toggle Button */}
             <button
               onClick={() => {
@@ -422,7 +439,6 @@ export default function LeaderboardPage() {
                 setPage(1);
                 setLoading(true);
                 setError(null);
-                setNoteDismissed(false);
               }}
             >
               <SelectTrigger
@@ -445,26 +461,6 @@ export default function LeaderboardPage() {
             </Select>
           </div>
         </div>
-
-        {showWindowNote && (
-          <div className="flex items-start justify-between gap-3 rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-sm font-sans mb-5">
-            <p className="text-amber-400/80 leading-snug">
-              <span className="font-semibold text-amber-400">PnL</span> and{" "}
-              <span className="font-semibold text-amber-400">Sharpe</span> reflect{" "}
-              {WINDOW_LABELS[selectedWindow].toLowerCase()}.
-              {" "}Score, Win Rate, Max Loss, and Profit Factor currently show all-time values.
-            </p>
-            <button
-              onClick={() => setNoteDismissed(true)}
-              aria-label="Dismiss note"
-              className="text-amber-500/50 hover:text-amber-400 transition-colors flex-shrink-0 mt-px"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor" className="w-4 h-4">
-                <path d="M5.28 4.22a.75.75 0 0 0-1.06 1.06L6.94 8l-2.72 2.72a.75.75 0 1 0 1.06 1.06L8 9.06l2.72 2.72a.75.75 0 1 0 1.06-1.06L9.06 8l2.72-2.72a.75.75 0 0 0-1.06-1.06L8 6.94 5.28 4.22Z" />
-              </svg>
-            </button>
-          </div>
-        )}
 
         <div className="rounded-xl border border-zinc-200 dark:border-white/5 bg-zinc-50/50 dark:bg-zinc-900/60 overflow-x-auto shadow-2xl dark:shadow-black/40">
           <Table className="min-w-[800px]">
@@ -633,7 +629,7 @@ export default function LeaderboardPage() {
 
         {!loading && traders.length > 0 && (
           <p className="text-xs text-zinc-600 font-sans mt-4 text-center">
-            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]} ({sortOrder.toUpperCase()}){xLinked && <> &middot; X linked only</>}
+            Showing {traders.length} traders &middot; {WINDOW_LABELS[selectedWindow]} &middot; sorted by {SORT_LABELS[sort]} ({sortOrder.toUpperCase()}){xLinked && <> &middot; X linked only</>}{profitable && <> &middot; profitable only</>}
           </p>
         )}
       </div>

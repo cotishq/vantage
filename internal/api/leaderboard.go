@@ -64,19 +64,20 @@ func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
 		}
 
 		xLinked := r.URL.Query().Get("xLinked") == "true"
+		profitable := r.URL.Query().Get("profitable") == "true"
 		order := r.URL.Query().Get("order")
 		if order != "asc" && order != "desc" {
 			order = "desc"
 		}
 		search := r.URL.Query().Get("search")
 
-		totalCount, err := countLeaderboard(r.Context(), db, window, xLinked, search)
+		totalCount, err := countLeaderboard(r.Context(), db, window, xLinked, profitable, search)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
 		}
 
-		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, order, limit, offset, xLinked, search)
+		entries, err := listLeaderboard(r.Context(), db, window, sortColumn, order, limit, offset, xLinked, profitable, search)
 		if err != nil {
 			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 			return
@@ -87,10 +88,13 @@ func GetLeaderboardHandler(db *pgxpool.Pool) http.HandlerFunc {
 	}
 }
 
-func countLeaderboard(ctx context.Context, db *pgxpool.Pool, window string, xLinked bool, search string) (int, error) {
+func countLeaderboard(ctx context.Context, db *pgxpool.Pool, window string, xLinked bool, profitable bool, search string) (int, error) {
 	whereClause := "WHERE ls.time_window = $1"
 	if xLinked {
 		whereClause += " AND t.x_username IS NOT NULL AND t.x_username != ''"
+	}
+	if profitable {
+		whereClause += " AND ls.pnl > 0"
 	}
 	var args []any
 	args = append(args, window)
@@ -115,10 +119,13 @@ func countLeaderboard(ctx context.Context, db *pgxpool.Pool, window string, xLin
 	return count, nil
 }
 
-func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, order string, limit, offset int, xLinked bool, search string) ([]leaderboardEntry, error) {
+func listLeaderboard(ctx context.Context, db *pgxpool.Pool, window, sortColumn, order string, limit, offset int, xLinked bool, profitable bool, search string) ([]leaderboardEntry, error) {
 	whereClause := "WHERE ls.time_window = $1"
 	if xLinked {
 		whereClause += " AND t.x_username IS NOT NULL AND t.x_username != ''"
+	}
+	if profitable {
+		whereClause += " AND ls.pnl > 0"
 	}
 	var args []any
 	args = append(args, window, limit, offset)
