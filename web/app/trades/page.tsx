@@ -204,6 +204,7 @@ export default function RecentTradesPage() {
       }
     };
 
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLoading(true);
     setTrades([]);
     fetchTrades(true);

@@ -9,6 +9,7 @@ import { ModeToggle } from "./mode-toggle";
 const links = [
   { href: "/", label: "Leaderboard" },
   { href: "/trades", label: "Recent Trades" },
+  { href: "/signals", label: "Consensus" },
   { href: "/positions", label: "Top Positions" },
   { href: "/trending", label: "Trending Markets" },
 ];

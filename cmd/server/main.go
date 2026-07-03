@@ -102,6 +102,7 @@ func main() {
 	r.Get("/recent-trades", api.GetRecentTradesHandler(db))
 	r.Get("/positions", api.GetTopPositionsHandler(db))
 	r.Get("/trending-markets", api.GetTrendingMarketsHandler(db))
+	r.Get("/signals/consensus", api.GetConsensusSignalsHandler(db))
 
 	r.Get("/debug/leaderboard", func(w http.ResponseWriter, r *http.Request) {
 		entries, err := pm.GetLeaderboard(leaderboardParams)
@@ -212,7 +213,6 @@ func runPollAndScore(ctx context.Context, db *pgxpool.Pool, pm *polymarket.Clien
 		log.Printf("computed and saved %d leaderboard scores (%s)", saved, w.name)
 	}
 }
-
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

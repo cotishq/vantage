@@ -189,6 +189,7 @@ export default function TrendingMarketsPage() {
 	// Fetch Trending Markets data
 	useEffect(() => {
 		const controller = new AbortController();
+		// eslint-disable-next-line react-hooks/set-state-in-effect
 		setLoading(true);
 
 		const baseUrl = process.env.NEXT_PUBLIC_API_URL;
