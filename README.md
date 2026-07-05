@@ -16,6 +16,27 @@
 
 ---
 
+## Features & Algorithms
+
+### 1. Leaderboard Scoring & Risk Filters
+* **Leaderboard Score (0-100)**: Ranks traders on risk-adjusted profitability. Weighted as:
+  * **Consistency (25%)**: Ratio of positive trading days to active days.
+  * **Cohort-Normalized PnL (25%)**: Profit normalized relative to the cohort min and max PnL.
+  * **Win Rate (20%)**: Percentage of resolved positions that closed in profit.
+  * **Inverted Cohort-Normalized Max Loss (15%)**: Penalizes massive single-position drawdowns.
+  * **Normalized Profit Factor (15%)**: Gross win volume divided by gross loss volume (clamped using a divisor of 10).
+* **Sharpe Ratio**: Computed from daily net transaction flows inside `trader_activity` as $\text{Mean} / \text{StdDev}$. Identifies steady-return traders with low day-to-day volatility.
+
+### 2. Consensus Signals & Confidence Score
+* **Consensus Engine**: Aggregates active positions where profitable tracked traders hold the same outcome side, exposing where the "smart money" is co-investing.
+* **Weighted Confidence Score (0-100)**: Evaluates opportunity strength:
+  * **Trader Count (40% Weight)**: $\min(\text{trader\_count} / 20.0, 1.0) \times 100$ (maxed at 20+ traders).
+  * **ROI Score (30% Weight)**: $\min(\max(\text{roi}, 0.0), 1.0) \times 100$ (rewards early cohort entry, capped at 100% ROI).
+  * **Recency Score (30% Weight)**: $\min(\text{buys\_24h} / 50.0, 1.0) \times 100$ (rewards active buy momentum in the last 24 hours).
+
+---
+
+
 ## Decisions & Debug Log
 
 This log documents critical engineering choices, bugs resolved, and structural tradeoffs made during development:
