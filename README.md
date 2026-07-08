@@ -30,9 +30,9 @@
 ### 2. Consensus Signals & Confidence Score
 * **Consensus Engine**: Aggregates active positions where profitable tracked traders hold the same outcome side, exposing where the "smart money" is co-investing.
 * **Weighted Confidence Score (0-100)**: Evaluates opportunity strength:
-  * **Trader Count (40% Weight)**: $\min(\text{trader\_count} / 20.0, 1.0) \times 100$ (maxed at 20+ traders).
+  * **Trader Count (40% Weight)**: $\min(\text{trader\\_count} / 20.0, 1.0) \times 100$ (maxed at 20+ traders).
   * **ROI Score (30% Weight)**: $\min(\max(\text{roi}, 0.0), 1.0) \times 100$ (rewards early cohort entry, capped at 100% ROI).
-  * **Recency Score (30% Weight)**: $\min(\text{buys\_24h} / 50.0, 1.0) \times 100$ (rewards active buy momentum in the last 24 hours).
+  * **Recency Score (30% Weight)**: $\min(\text{buys\\_24h} / 50.0, 1.0) \times 100$ (rewards active buy momentum in the last 24 hours).
 
 ---
 
